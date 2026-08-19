@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="theme-color" content="#202845" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Check-in" />
+<title>iMexico · Check-in de asesores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#202845;
+    --navy-light:#2e3a63;
+    --gold:#C9A96E;
+    --gold-dark:#8a6d3b;
+    --cream:#F7F5F1;
+    --line:#E4E1D8;
+    --ok:#3F7D4E;
+    --warn:#B0791F;
+    --text:#202845;
+    --muted:#75746D;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'DM Sans',sans-serif;
+    background:var(--cream);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  header{
+    width:100%;
+    background:var(--navy);
+    color:#fff;
+    padding:22px 20px 20px;
+    text-align:center;
+  }
+  header h1{
+    font-family:'DM Serif Display',serif;
+    font-size:22px;
+    font-weight:400;
+    margin:0;
+    letter-spacing:0.3px;
+  }
+  header p{
+    margin:4px 0 0;
+    font-size:12px;
+    color:#C9CBDA;
+  }
+  main{
+    width:100%;
+    max-width:420px;
+    padding:20px 18px 60px;
+  }
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+    margin-bottom:16px;
+  }
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:6px;
+    font-weight:500;
+  }
+  select, input[type=time], input[type=text]{
+    width:100%;
+    padding:11px 12px;
+    border-radius:9px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-family:'DM Sans',sans-serif;
+    font-size:15px;
+    color:var(--text);
+  }
+  select:focus, input:focus{
+    outline:none;
+    border-color:var(--gold-dark);
+    box-shadow:0 0 0 3px rgba(201,169,110,0.25);
+  }
+  .field{margin-bottom:14px;}
+  .datetime{
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    margin-bottom:16px;
+  }
+  .toggle-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .toggle{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    padding:16px 8px;
+    border-radius:11px;
+    border:1.5px solid var(--line);
+    background:#fff;
+    cursor:pointer;
+    font-family:'DM Sans',sans-serif;
+    font-size:13px;
+    color:var(--muted);
+    transition:border-color .15s, background .15s, color .15s;
+  }
+  .toggle svg{width:22px;height:22px;stroke:var(--muted);transition:stroke .15s;}
+  .toggle.active{
+    border-color:var(--gold-dark);
+    background:rgba(201,169,110,0.12);
+    color:var(--gold-dark);
+    font-weight:500;
+  }
+  .toggle.active svg{stroke:var(--gold-dark);}
+  .conditional{
+    background:var(--cream);
+    border-radius:11px;
+    padding:14px;
+    margin-bottom:14px;
+    display:none;
+  }
+  .conditional.show{display:block;}
+  .time-row{display:flex;gap:10px;}
+  .time-row .field{flex:1;margin-bottom:0;}
+  button.submit{
+    width:100%;
+    padding:14px;
+    border-radius:10px;
+    border:none;
+    background:var(--gold);
+    color:#3a2e14;
+    font-family:'DM Sans',sans-serif;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    transition:opacity .15s, transform .1s;
+  }
+  button.submit:active{transform:scale(0.98);}
+  button.submit:disabled{opacity:0.55;cursor:default;}
+  .confirm{
+    display:none;
+    text-align:center;
+    padding:26px 20px;
+  }
+  .confirm.show{display:block;}
+  .confirm .check{
+    width:48px;height:48px;
+    border-radius:50%;
+    background:var(--ok);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 14px;
+  }
+  .confirm .check svg{width:24px;height:24px;stroke:#fff;stroke-width:3;fill:none;}
+  .confirm p.big{font-family:'DM Serif Display',serif;font-size:18px;margin:0 0 4px;}
+  .confirm p.small{font-size:12px;color:var(--muted);margin:0;}
+  .confirm button.again{
+    margin-top:20px;
+    background:none;
+    border:1px solid var(--line);
+    color:var(--navy);
+    padding:10px 18px;
+    border-radius:9px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .error{
+    color:#A32D2D;
+    font-size:12px;
+    margin-top:8px;
+    display:none;
+  }
+  .error.show{display:block;}
+  .form-wrap.hidden{display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>iMexico Real Estate</h1>
+  <p>Registro de asistencia — asesores</p>
+</header>
+
+<main>
+  <div class="form-wrap" id="formWrap">
+    <div class="card">
+      <div class="field">
+        <label for="asesor">Asesor</label>
+        <select id="asesor">
+          <option value="" disabled selected>Selecciona tu nombre</option>
+        </select>
+      </div>
+
+      <div class="datetime" id="datetime"></div>
+
+      <div class="toggle-row">
+        <div class="toggle" id="toggleOficina" onclick="setEstatus('OFICINA')">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h2M13 8h2M9 12h2M13 12h2M9 16h2M13 16h2"/></svg>
+          <span>Oficina</span>
+        </div>
+        <div class="toggle" id="toggleRecorrido" onclick="setEstatus('RECORRIDO')">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M5 17a2 2 0 104 0M15 17a2 2 0 104 0M5 17V10l2-5h10l2 5v7"/></svg>
+          <span>Recorrido</span>
+        </div>
+      </div>
+
+      <div class="conditional" id="recorridoFields">
+        <div class="field">
+          <label for="desarrollo">Desarrollo</label>
+          <select id="desarrollo">
+            <option value="" disabled selected>Selecciona el desarrollo</option>
+          </select>
+        </div>
+        <div class="time-row">
+          <div class="field">
+            <label for="horaSalida">Salida</label>
+            <input type="time" id="horaSalida" />
+          </div>
+          <div class="field">
+            <label for="horaRegreso">Regreso estimado</label>
+            <input type="time" id="horaRegreso" />
+          </div>
+        </div>
+      </div>
+
+      <button class="submit" id="submitBtn" onclick="registrar()">Registrar</button>
+      <div class="error" id="errorMsg"></div>
+    </div>
+  </div>
+
+  <div class="confirm" id="confirmBox">
+    <div class="check"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></div>
+    <p class="big" id="confirmTitle">Registrado</p>
+    <p class="small" id="confirmDetail"></p>
+    <button class="again" onclick="resetForm()">Registrar otro</button>
+  </div>
+</main>
+
+<script>
+let estatusActual = null;
+
+const asesorSel = document.getElementById('asesor');
+const desarrolloSel = document.getElementById('desarrollo');
+const submitBtn = document.getElementById('submitBtn');
+submitBtn.disabled = true;
+submitBtn.textContent = 'Cargando…';
+
+fetch('https://script.google.com/macros/s/AKfycbzlPAga-rYNqpkEiZcRZHxMwW2Re02geX2Eb1rilQWNVFoxnqlhVQIxoTej-p06J7KqrQ/exec?action=config')
+  .then(r => r.json())
+  .then(res => {
+    if(res.ok){
+      res.asesores.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; asesorSel.appendChild(o); });
+      res.desarrollos.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; desarrolloSel.appendChild(o); });
+    } else {
+      showError('No se pudo cargar la lista de asesores.');
+    }
+  })
+  .catch(() => showError('Sin conexión. Recarga la página.'))
+  .finally(() => {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Registrar';
+  });
+
+function updateDatetime(){
+  const now = new Date();
+  const opts = { weekday:'long', day:'numeric', month:'long' };
+  const fecha = now.toLocaleDateString('es-MX', opts);
+  const hora = now.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('datetime').textContent = fecha + ' · ' + hora;
+}
+updateDatetime();
+setInterval(updateDatetime, 30000);
+
+function setEstatus(v){
+  estatusActual = v;
+  document.getElementById('toggleOficina').classList.toggle('active', v === 'OFICINA');
+  document.getElementById('toggleRecorrido').classList.toggle('active', v === 'RECORRIDO');
+  document.getElementById('recorridoFields').classList.toggle('show', v === 'RECORRIDO');
+  document.getElementById('errorMsg').classList.remove('show');
+}
+
+function showError(msg){
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function registrar(){
+  const asesor = asesorSel.value;
+  if(!asesor){ showError('Selecciona tu nombre.'); return; }
+  if(!estatusActual){ showError('Selecciona Oficina o Recorrido.'); return; }
+
+  let payload = {
+    asesor: asesor,
+    estatus: estatusActual,
+    desarrollo: '',
+    horaSalida: '',
+    horaRegreso: ''
+  };
+
+  if(estatusActual === 'RECORRIDO'){
+    const des = desarrolloSel.value;
+    if(!des){ showError('Selecciona el desarrollo del recorrido.'); return; }
+    payload.desarrollo = des;
+    payload.horaSalida = document.getElementById('horaSalida').value;
+    payload.horaRegreso = document.getElementById('horaRegreso').value;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Registrando...';
+
+  // Truco anti-preflight: content-type text/plain, Apps Script lee el JSON crudo en e.postData.contents
+  fetch('https://script.google.com/macros/s/AKfycbzlPAga-rYNqpkEiZcRZHxMwW2Re02geX2Eb1rilQWNVFoxnqlhVQIxoTej-p06J7KqrQ/exec', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(res => {
+    if(res.ok){
+      const now = new Date();
+      const hora = now.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+      document.getElementById('confirmTitle').textContent = estatusActual === 'OFICINA' ? 'En oficina' : 'Recorrido registrado';
+      document.getElementById('confirmDetail').textContent = asesor + ' · ' + hora + (payload.desarrollo ? ' · ' + payload.desarrollo : '');
+      document.getElementById('formWrap').classList.add('hidden');
+      document.getElementById('confirmBox').classList.add('show');
+    } else {
+      showError('No se pudo registrar. Intenta de nuevo.');
+    }
+  })
+  .catch(() => showError('Sin conexión. Revisa tu internet e intenta de nuevo.'))
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'Registrar';
+  });
+}
+
+function resetForm(){
+  estatusActual = null;
+  asesorSel.value = '';
+  desarrolloSel.value = '';
+  document.getElementById('horaSalida').value = '';
+  document.getElementById('horaRegreso').value = '';
+  document.getElementById('toggleOficina').classList.remove('active');
+  document.getElementById('toggleRecorrido').classList.remove('active');
+  document.getElementById('recorridoFields').classList.remove('show');
+  document.getElementById('confirmBox').classList.remove('show');
+  document.getElementById('formWrap').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

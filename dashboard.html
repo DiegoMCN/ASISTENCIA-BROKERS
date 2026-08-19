@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#202845" />
+<title>iMexico · Asistencia de asesores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#202845;
+    --gold:#C9A96E;
+    --gold-dark:#8a6d3b;
+    --cream:#F7F5F1;
+    --line:#E4E1D8;
+    --ok:#3F7D4E;
+    --ok-bg:#E4EFE6;
+    --warn:#B0791F;
+    --warn-bg:#F6ECD9;
+    --danger:#A32D2D;
+    --danger-bg:#F5E4E2;
+    --text:#202845;
+    --muted:#75746D;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);}
+  header{background:var(--navy);color:#fff;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  header h1{font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;margin:0;}
+  header p{margin:2px 0 0;font-size:12px;color:#C9CBDA;}
+  main{padding:20px 24px 60px;max-width:1180px;margin:0 auto;}
+
+  .gate{
+    position:fixed;inset:0;background:var(--navy);z-index:999;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+  }
+  .gate input{padding:10px 14px;border-radius:8px;border:none;font-size:14px;width:220px;}
+  .gate button{padding:10px 18px;border-radius:8px;border:none;background:var(--gold);color:#3a2e14;font-weight:700;cursor:pointer;}
+  .gate p{color:#C9CBDA;font-size:12px;margin:0;}
+  .gate .err{color:#F0999A;font-size:12px;min-height:16px;}
+
+  .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:18px;}
+  select, input[type=month]{padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;}
+  .chip{font-size:12px;padding:6px 12px;border-radius:20px;border:1px solid var(--line);cursor:pointer;background:#fff;color:var(--muted);user-select:none;transition:opacity .15s;}
+  .chip.on-oficina{border-color:var(--ok);background:var(--ok-bg);color:var(--ok);font-weight:500;}
+  .chip.on-recorrido{border-color:var(--warn);background:var(--warn-bg);color:var(--warn);font-weight:500;}
+  .chip.on-falta{border-color:var(--danger);background:var(--danger-bg);color:var(--danger);font-weight:500;}
+  .spacer{flex:1;}
+  button.refresh{background:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;color:var(--navy);}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+  .stat p.label{margin:0 0 4px;font-size:12px;color:var(--muted);}
+  .stat p.value{margin:0;font-size:22px;font-weight:500;font-family:'DM Serif Display',serif;}
+
+  .grid-wrap{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;margin-bottom:16px;}
+  table{border-collapse:collapse;width:100%;min-width:640px;}
+  th, td{padding:6px 4px;text-align:center;font-size:11px;}
+  th{color:var(--muted);font-weight:400;border-bottom:1px solid var(--line);}
+  th.today, td.today-col{background:rgba(201,169,110,0.08);}
+  th.asesor-col, td.asesor-col{text-align:left;padding-left:8px;font-size:12px;color:var(--text);white-space:nowrap;}
+  .dot{width:18px;height:18px;border-radius:5px;margin:0 auto;cursor:pointer;border:1px solid rgba(0,0,0,0.05);position:relative;}
+  .dot.oficina{background:var(--ok);}
+  .dot.recorrido{background:var(--warn);}
+  .dot.falta{background:var(--danger-bg);border:1.5px solid var(--danger);}
+  .dot.pendiente{background:#fff;border:1.5px dashed var(--line);}
+  .dot.finde{background:var(--line);border-color:var(--line);cursor:default;}
+  .dot.futuro{background:transparent;border-color:transparent;cursor:default;}
+  .dot.multi::after{content:'';position:absolute;top:-2px;right:-2px;width:6px;height:6px;border-radius:50%;background:var(--navy);}
+  .dot.hidden{opacity:0.15;}
+
+  .detail{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--muted);min-height:20px;}
+  .detail b{color:var(--text);}
+  .loading{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin:0 0 14px;align-items:center;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <p style="color:#fff;font-family:'DM Serif Display',serif;font-size:18px;">Asistencia de asesores</p>
+  <input type="password" id="gatePass" placeholder="Llave de acceso" />
+  <button id="gateBtn" onclick="checkGate()">Entrar</button>
+  <p class="err" id="gateErr"></p>
+  <p>Acceso restringido — vista de gerencia</p>
+</div>
+
+<header>
+  <div>
+    <h1>Asistencia de asesores</h1>
+    <p>iMexico Real Estate — vista gerencial</p>
+  </div>
+  <input type="month" id="mesInput" />
+</header>
+
+<main>
+  <div class="filters">
+    <select id="filtroAsesor"><option value="">Todos los asesores</option></select>
+    <select id="filtroDesarrollo"><option value="">Todos los desarrollos</option></select>
+    <div class="chip on-oficina" id="chipOficina" onclick="toggleChip('oficina')">Oficina</div>
+    <div class="chip on-recorrido" id="chipRecorrido" onclick="toggleChip('recorrido')">Recorrido</div>
+    <div class="chip on-falta" id="chipFalta" onclick="toggleChip('falta')">Falta</div>
+    <div class="spacer"></div>
+    <button class="refresh" onclick="cargarDatos()">Actualizar</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="legend">
+    <span><i style="background:var(--ok)"></i> Oficina</span>
+    <span><i style="background:var(--warn)"></i> Recorrido</span>
+    <span><i style="background:var(--danger-bg);border:1.5px solid var(--danger)"></i> Falta (sin registro)</span>
+    <span><i style="background:#fff;border:1.5px dashed var(--line)"></i> Pendiente (hoy, aún no vence)</span>
+    <span><i style="background:var(--line)"></i> Fin de semana</span>
+    <span>● punto negro = más de un registro ese día</span>
+  </div>
+
+  <div class="grid-wrap" id="gridWrap"><div class="loading">Cargando registros…</div></div>
+
+  <div class="detail" id="detail">Toca una celda para ver el detalle del registro.</div>
+</main>
+
+<script>
+const DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbzlPAga-rYNqpkEiZcRZHxMwW2Re02geX2Eb1rilQWNVFoxnqlhVQIxoTej-p06J7KqrQ/exec';
+
+// ── ESTADO ──────────────────────────────────────────────────────────────
+let ASESORES = [];
+let DESARROLLOS = [];
+let allRecords = [];
+let activeFilters = { oficina: true, recorrido: true, falta: true };
+// La llave NUNCA vive escrita en este archivo. Se pide al abrir el dashboard
+// y el servidor (Code.gs, vía Propiedades de script) es quien decide si es
+// correcta — si alguien ve el código fuente no encuentra ninguna contraseña.
+// Se guarda en sessionStorage solo para no pedirla de nuevo en cada recarga
+// de esta pestaña; se borra sola al cerrar el navegador.
+let sessionKey = sessionStorage.getItem('imexico_key') || '';
+const CUTOFF_HOUR = 10; // hora límite (24h) para considerar falta el día de hoy si no ha registrado
+// ──────────────────────────────────────────────────────────────────────
+
+const mesInput = document.getElementById('mesInput');
+const now = new Date();
+mesInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+mesInput.addEventListener('change', render);
+
+const filtroAsesor = document.getElementById('filtroAsesor');
+filtroAsesor.addEventListener('change', render);
+
+const filtroDesarrollo = document.getElementById('filtroDesarrollo');
+filtroDesarrollo.addEventListener('change', render);
+
+const CHIP_IDS = { oficina: 'chipOficina', recorrido: 'chipRecorrido', falta: 'chipFalta' };
+function toggleChip(key){
+  activeFilters[key] = !activeFilters[key];
+  document.getElementById(CHIP_IDS[key]).style.opacity = activeFilters[key] ? '1' : '0.4';
+  render();
+}
+
+// Única función que habla con el endpoint protegido — el servidor es quien
+// decide si la llave es válida, aquí solo se lee su respuesta.
+function fetchList_(key){
+  return fetch(DEPLOY_URL + '?action=list&key=' + encodeURIComponent(key)).then(r => r.json());
+}
+
+function cargarDatos(){
+  if(!sessionKey) return;
+  document.getElementById('gridWrap').innerHTML = '<div class="loading">Cargando registros…</div>';
+  fetchList_(sessionKey)
+    .then(res => {
+      if(res.ok){ allRecords = res.records; render(); }
+      else { document.getElementById('gridWrap').innerHTML = '<div class="loading">' + (res.error || 'No se pudieron cargar los datos.') + '</div>'; }
+    })
+    .catch(() => { document.getElementById('gridWrap').innerHTML = '<div class="loading">Sin conexión con el backend.</div>'; });
+}
+
+function checkGate(){
+  const val = document.getElementById('gatePass').value.trim();
+  if(!val){ document.getElementById('gateErr').textContent = 'Escribe la llave.'; return; }
+  const btn = document.getElementById('gateBtn');
+  btn.disabled = true;
+  btn.textContent = 'Verificando…';
+  document.getElementById('gateErr').textContent = '';
+
+  fetchList_(val)
+    .then(res => {
+      if(res.ok){
+        sessionKey = val;
+        sessionStorage.setItem('imexico_key', val);
+        allRecords = res.records;
+        document.getElementById('gate').style.display = 'none';
+        render();
+      } else {
+        document.getElementById('gateErr').textContent = 'Llave incorrecta.';
+      }
+    })
+    .catch(() => { document.getElementById('gateErr').textContent = 'Sin conexión con el backend.'; })
+    .finally(() => { btn.disabled = false; btn.textContent = 'Entrar'; });
+}
+
+// Si el navegador ya tenía una llave de una visita anterior, se vuelve a
+// verificar contra el servidor antes de mostrar nada — nunca se confía en
+// que "estaba guardada" como prueba de que es correcta.
+function intentarSesion(){
+  if(!sessionKey) return;
+  fetchList_(sessionKey).then(res => {
+    if(res.ok){
+      allRecords = res.records;
+      document.getElementById('gate').style.display = 'none';
+      render();
+    } else {
+      sessionStorage.removeItem('imexico_key');
+      sessionKey = '';
+    }
+  });
+}
+
+function cargarConfig(){
+  fetch(DEPLOY_URL + '?action=config')
+    .then(r => r.json())
+    .then(res => {
+      if(res.ok){
+        ASESORES = res.asesores;
+        DESARROLLOS = res.desarrollos;
+        ASESORES.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; filtroAsesor.appendChild(o); });
+        DESARROLLOS.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; filtroDesarrollo.appendChild(o); });
+        intentarSesion();
+      } else {
+        document.getElementById('gridWrap').innerHTML = '<div class="loading">No se pudo cargar la configuración (asesores/desarrollos).</div>';
+      }
+    })
+    .catch(() => { document.getElementById('gridWrap').innerHTML = '<div class="loading">Sin conexión con el backend.</div>'; });
+}
+
+function render(){
+  const [year, month] = mesInput.value.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const asesorFiltro = filtroAsesor.value;
+  const desarrolloFiltro = filtroDesarrollo.value;
+  const asesoresAMostrar = asesorFiltro ? [asesorFiltro] : ASESORES;
+
+  const hoy = new Date();
+  const hoyStr = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(hoy.getDate()).padStart(2,'0');
+
+  const map = {};
+  allRecords.forEach(r => {
+    if(desarrolloFiltro && r.desarrollo !== desarrolloFiltro) return;
+    const key = r.asesor + '|' + r.fecha;
+    if(!map[key]) map[key] = [];
+    map[key].push(r);
+  });
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  trh.innerHTML = '<th class="asesor-col">Asesor</th>' +
+    Array.from({length: daysInMonth}, (_, i) => {
+      const f = year + '-' + String(month).padStart(2,'0') + '-' + String(i+1).padStart(2,'0');
+      return '<th class="' + (f === hoyStr ? 'today' : '') + '">' + (i + 1) + '</th>';
+    }).join('');
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  let diasHabilesPasados = 0, diasConRegistro = 0, totalRecorridos = 0, totalFaltas = 0;
+
+  asesoresAMostrar.forEach(asesor => {
+    const tr = document.createElement('tr');
+    const tdName = document.createElement('td');
+    tdName.className = 'asesor-col';
+    tdName.textContent = asesor;
+    tr.appendChild(tdName);
+
+    for(let d = 1; d <= daysInMonth; d++){
+      const fecha = year + '-' + String(month).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+      const dow = new Date(year, month - 1, d).getDay();
+      const esFinde = dow === 0 || dow === 6;
+      const esFuturo = fecha > hoyStr;
+      const esHoy = fecha === hoyStr;
+      const recs = map[asesor + '|' + fecha] || [];
+
+      const td = document.createElement('td');
+      if(esHoy) td.className = 'today-col';
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+
+      let estado;
+      if(esFinde){
+        estado = 'finde';
+      } else if(esFuturo){
+        estado = 'futuro';
+      } else if(recs.some(r => r.estatus === 'RECORRIDO')){
+        estado = 'recorrido';
+      } else if(recs.some(r => r.estatus === 'OFICINA')){
+        estado = 'oficina';
+      } else if(esHoy){
+        estado = hoy.getHours() >= CUTOFF_HOUR ? 'falta' : 'pendiente';
+      } else {
+        estado = 'falta'; // día hábil pasado sin ningún registro → falta automática
+      }
+
+      dot.classList.add(estado);
+      if(recs.length > 1) dot.classList.add('multi');
+      if((estado === 'oficina' || estado === 'recorrido' || estado === 'falta') && !activeFilters[estado]) dot.classList.add('hidden');
+
+      if(!esFinde && !esFuturo){
+        diasHabilesPasados++;
+        if(recs.length > 0) diasConRegistro++;
+        if(estado === 'falta') totalFaltas++;
+      }
+      totalRecorridos += recs.filter(r => r.estatus === 'RECORRIDO').length;
+
+      const resumen = recs.length ? recs.map(r => r.estatus === 'RECORRIDO' ? 'Recorrido: ' + r.desarrollo : 'Oficina').join(' / ') : (estado === 'falta' ? 'Falta' : estado === 'pendiente' ? 'Pendiente' : '');
+      dot.title = asesor + ' — ' + fecha + (resumen ? ' — ' + resumen : '');
+      dot.onclick = () => mostrarDetalle(asesor, fecha, recs, estado);
+      td.appendChild(dot);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  const wrap = document.getElementById('gridWrap');
+  wrap.innerHTML = '';
+  wrap.appendChild(table);
+
+  const pctAsistencia = diasHabilesPasados > 0 ? Math.round((diasConRegistro / diasHabilesPasados) * 100) : 0;
+  document.getElementById('stats').innerHTML =
+    stat('Asistencia del mes', pctAsistencia + '%') +
+    stat('Recorridos registrados', totalRecorridos) +
+    stat('Faltas automáticas', totalFaltas);
+}
+
+function stat(label, value){
+  return '<div class="stat"><p class="label">' + label + '</p><p class="value">' + value + '</p></div>';
+}
+
+function mostrarDetalle(asesor, fecha, recs, estado){
+  const el = document.getElementById('detail');
+  if(estado === 'finde'){ el.innerHTML = '<b>' + asesor + '</b> — ' + fecha + ': fin de semana.'; return; }
+  if(estado === 'futuro'){ el.innerHTML = '<b>' + asesor + '</b> — ' + fecha + ': día futuro.'; return; }
+  if(recs.length === 0){
+    const txt = estado === 'falta' ? 'falta — no se registró en el día.' : 'aún no registra hoy (antes de las ' + CUTOFF_HOUR + ':00).';
+    el.innerHTML = '<b>' + asesor + '</b> — ' + fecha + ': ' + txt;
+    return;
+  }
+  const partes = recs.map(r => r.estatus === 'RECORRIDO'
+    ? 'Recorrido — ' + r.desarrollo + (r.horaSalida ? ' — ' + r.horaSalida + ' a ' + (r.horaRegreso || '¿?') : '')
+    : 'En oficina' + (r.timestamp ? ' (' + r.timestamp.slice(11,16) + ')' : ''));
+  el.innerHTML = '<b>' + asesor + '</b> — ' + fecha + ' (' + recs.length + ' registro' + (recs.length > 1 ? 's' : '') + '): ' + partes.join(' · ');
+}
+
+cargarConfig();
+</script>
+</body>
+</html>
