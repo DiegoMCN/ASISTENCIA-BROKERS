@@ -133,6 +133,47 @@
   .conditional.show{display:block;}
   .time-row{display:flex;gap:10px;}
   .time-row .field{flex:1;margin-bottom:0;}
+  .slots-status{font-size:12px;color:var(--muted);margin-bottom:8px;}
+  .slots-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:6px;
+    margin-bottom:8px;
+  }
+  .slot{
+    padding:9px 4px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-size:12px;
+    text-align:center;
+    color:var(--text);
+    cursor:pointer;
+    user-select:none;
+  }
+  .slot.ocupado{
+    background:#F5E4E2;
+    border-color:#dcbdb8;
+    color:#A32D2D;
+    cursor:not-allowed;
+    text-decoration:line-through;
+    opacity:0.75;
+  }
+  .slot.selected{
+    background:var(--gold);
+    border-color:var(--gold-dark);
+    color:#3a2e14;
+    font-weight:700;
+  }
+  .slot.in-range{
+    background:rgba(201,169,110,0.28);
+    border-color:var(--gold-dark);
+  }
+  .slots-hint{font-size:11px;color:var(--muted);min-height:14px;}
+  .ocupados-list{margin-top:6px;font-size:11px;color:var(--muted);}
+  .ocupados-list .item{padding:4px 0;border-top:1px solid var(--line);}
+  .ocupados-list .item:first-child{border-top:none;}
+  .ocupados-list b{color:var(--text);font-weight:500;}
   button.submit{
     width:100%;
     padding:14px;
@@ -221,15 +262,16 @@
             <option value="" disabled selected>Selecciona el desarrollo</option>
           </select>
         </div>
-        <div class="time-row">
-          <div class="field">
-            <label for="horaSalida">Salida</label>
-            <input type="time" id="horaSalida" />
-          </div>
-          <div class="field">
-            <label for="horaRegreso">Regreso estimado</label>
-            <input type="time" id="horaRegreso" />
-          </div>
+        <div class="field">
+          <label for="fechaRecorrido">Fecha del recorrido</label>
+          <input type="date" id="fechaRecorrido" />
+        </div>
+        <div id="slotsWrap" style="display:none;">
+          <label id="slotsLabel">Horario del recorrido</label>
+          <div class="slots-status" id="slotsStatus">Selecciona un desarrollo para ver horarios disponibles.</div>
+          <div class="slots-grid" id="slotsGrid"></div>
+          <div class="slots-hint" id="slotsHint"></div>
+          <div class="ocupados-list" id="ocupadosList"></div>
         </div>
       </div>
 
@@ -247,15 +289,23 @@
 </main>
 
 <script>
+const DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbzlPAga-rYNqpkEiZcRZHxMwW2Re02geX2Eb1rilQWNVFoxnqlhVQIxoTej-p06J7KqrQ/exec';
+const WORK_START = 8;  // primer horario del día (8:00)
+const WORK_END = 19;   // último horario del día (18:00–19:00 es el último bloque)
+
 let estatusActual = null;
+let ocupados = [];        // rangos ocupados del desarrollo seleccionado, hoy
+let slotStartIdx = null;
+let slotEndIdx = null;
 
 const asesorSel = document.getElementById('asesor');
 const desarrolloSel = document.getElementById('desarrollo');
+const fechaInput = document.getElementById('fechaRecorrido');
 const submitBtn = document.getElementById('submitBtn');
 submitBtn.disabled = true;
 submitBtn.textContent = 'Cargando…';
 
-fetch('https://script.google.com/macros/s/AKfycbzlPAga-rYNqpkEiZcRZHxMwW2Re02geX2Eb1rilQWNVFoxnqlhVQIxoTej-p06J7KqrQ/exec?action=config')
+fetch(DEPLOY_URL + '?action=config')
   .then(r => r.json())
   .then(res => {
     if(res.ok){
@@ -270,6 +320,133 @@ fetch('https://script.google.com/macros/s/AKfycbzlPAga-rYNqpkEiZcRZHxMwW2Re02geX
     submitBtn.disabled = false;
     submitBtn.textContent = 'Registrar';
   });
+
+// "Hoy" según la zona horaria de la Riviera Maya, sin importar en qué huso
+// esté configurado el celular del asesor — así siempre coincide con el
+// "hoy" que calcula el servidor (Code.gs usa la misma zona: America/Cancun).
+function hoyStr(){
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Cancun', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+fechaInput.value = hoyStr();
+fechaInput.min = hoyStr();
+
+function buildSlots(){
+  const slots = [];
+  for(let h = WORK_START; h < WORK_END; h++){
+    slots.push({ start: String(h).padStart(2,'0') + ':00', end: String(h+1).padStart(2,'0') + ':00', startMin: h*60, endMin: (h+1)*60 });
+  }
+  return slots;
+}
+const SLOTS = buildSlots();
+
+function overlapConOcupados(startMin, endMin){
+  return ocupados.find(o => {
+    const [oh1, om1] = o.horaSalida.split(':').map(Number);
+    const [oh2, om2] = o.horaRegreso.split(':').map(Number);
+    const oStart = oh1 * 60 + om1, oEnd = oh2 * 60 + om2;
+    return startMin < oEnd && endMin > oStart;
+  });
+}
+
+// Solo se dibujan los horarios LIBRES — los ocupados ni siquiera se muestran,
+// para que no haya duda de cuáles se pueden elegir.
+function renderSlots(){
+  const grid = document.getElementById('slotsGrid');
+  grid.innerHTML = '';
+  SLOTS.forEach((s, i) => {
+    if(overlapConOcupados(s.startMin, s.endMin)) return; // ocupado → se omite
+    const div = document.createElement('div');
+    div.className = 'slot';
+    div.textContent = s.start;
+    if(slotStartIdx !== null && slotEndIdx !== null && i >= slotStartIdx && i <= slotEndIdx){
+      div.classList.add(i === slotStartIdx || i === slotEndIdx ? 'selected' : 'in-range');
+    }
+    div.onclick = () => onSlotClick(i);
+    grid.appendChild(div);
+  });
+  if(!grid.children.length){
+    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:var(--muted);">No quedan horarios libres ese día en este desarrollo.</div>';
+  }
+}
+
+function onSlotClick(i){
+  document.getElementById('slotsHint').textContent = '';
+  if(slotStartIdx === null || (slotStartIdx !== null && slotEndIdx !== null)){
+    // empezar selección nueva
+    slotStartIdx = i;
+    slotEndIdx = null;
+  } else {
+    // ya hay inicio, este clic define el fin
+    const start = Math.min(slotStartIdx, i);
+    const end = Math.max(slotStartIdx, i);
+    for(let k = start; k <= end; k++){
+      if(overlapConOcupados(SLOTS[k].startMin, SLOTS[k].endMin)){
+        document.getElementById('slotsHint').textContent = 'Ese rango cruza un horario ocupado. Elige otro.';
+        slotStartIdx = i;
+        slotEndIdx = null;
+        renderSlots();
+        return;
+      }
+    }
+    slotStartIdx = start;
+    slotEndIdx = end;
+  }
+  renderSlots();
+}
+
+function fechaLegible(f){
+  const [y,m,d] = f.split('-').map(Number);
+  return new Date(y, m-1, d).toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+}
+
+function cargarDisponibilidad(){
+  const desarrollo = desarrolloSel.value;
+  const fecha = fechaInput.value;
+  if(!desarrollo || !fecha) return;
+
+  document.getElementById('slotsLabel').textContent = 'Horario del recorrido — ' + fechaLegible(fecha);
+  const status = document.getElementById('slotsStatus');
+  status.textContent = 'Consultando horarios de ' + desarrollo + '…';
+  document.getElementById('slotsGrid').innerHTML = '';
+  document.getElementById('ocupadosList').innerHTML = '';
+  slotStartIdx = null; slotEndIdx = null;
+
+  fetch(DEPLOY_URL + '?action=disponibilidad&desarrollo=' + encodeURIComponent(desarrollo) + '&fecha=' + fecha)
+    .then(r => r.json())
+    .then(res => {
+      if(res.ok){
+        ocupados = res.ocupados;
+        status.textContent = ocupados.length
+          ? 'Toca un horario libre de inicio y otro de fin.'
+          : 'Sin recorridos agendados ese día en ' + desarrollo + ' — todos los horarios están libres.';
+        renderSlots();
+        renderOcupados();
+      } else {
+        status.textContent = 'No se pudo consultar disponibilidad.';
+      }
+    })
+    .catch(() => { status.textContent = 'Sin conexión — no se pudo consultar disponibilidad.'; });
+}
+
+function renderOcupados(){
+  const el = document.getElementById('ocupadosList');
+  if(!ocupados.length){ el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="item" style="border-top:none;font-weight:500;color:var(--text);">Ya ocupados ese día:</div>' +
+    ocupados
+      .slice()
+      .sort((a,b) => a.horaSalida.localeCompare(b.horaSalida))
+      .map(o => '<div class="item">' + o.horaSalida + ' a ' + o.horaRegreso + ' — <b>' + o.asesor + '</b></div>')
+      .join('');
+}
+
+desarrolloSel.addEventListener('change', () => {
+  document.getElementById('slotsWrap').style.display = 'block';
+  cargarDisponibilidad();
+});
+fechaInput.addEventListener('change', () => {
+  if(fechaInput.value < hoyStr()){ fechaInput.value = hoyStr(); }
+  if(desarrolloSel.value) cargarDisponibilidad();
+});
 
 function updateDatetime(){
   const now = new Date();
@@ -311,9 +488,12 @@ function registrar(){
   if(estatusActual === 'RECORRIDO'){
     const des = desarrolloSel.value;
     if(!des){ showError('Selecciona el desarrollo del recorrido.'); return; }
+    if(!fechaInput.value){ showError('Selecciona la fecha del recorrido.'); return; }
+    if(slotStartIdx === null || slotEndIdx === null){ showError('Selecciona un horario de inicio y uno de fin.'); return; }
     payload.desarrollo = des;
-    payload.horaSalida = document.getElementById('horaSalida').value;
-    payload.horaRegreso = document.getElementById('horaRegreso').value;
+    payload.fecha = fechaInput.value;
+    payload.horaSalida = SLOTS[slotStartIdx].start;
+    payload.horaRegreso = SLOTS[slotEndIdx].end;
   }
 
   const btn = document.getElementById('submitBtn');
@@ -321,7 +501,7 @@ function registrar(){
   btn.textContent = 'Registrando...';
 
   // Truco anti-preflight: content-type text/plain, Apps Script lee el JSON crudo en e.postData.contents
-  fetch('https://script.google.com/macros/s/AKfycbzlPAga-rYNqpkEiZcRZHxMwW2Re02geX2Eb1rilQWNVFoxnqlhVQIxoTej-p06J7KqrQ/exec', {
+  fetch(DEPLOY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
@@ -329,10 +509,13 @@ function registrar(){
   .then(r => r.json())
   .then(res => {
     if(res.ok){
-      const now = new Date();
-      const hora = now.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
-      document.getElementById('confirmTitle').textContent = estatusActual === 'OFICINA' ? 'En oficina' : 'Recorrido registrado';
-      document.getElementById('confirmDetail').textContent = asesor + ' · ' + hora + (payload.desarrollo ? ' · ' + payload.desarrollo : '');
+      document.getElementById('confirmTitle').textContent = estatusActual === 'OFICINA' ? 'En oficina' : 'Recorrido agendado';
+      if(estatusActual === 'OFICINA'){
+        const hora = new Date().toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+        document.getElementById('confirmDetail').textContent = asesor + ' · ' + hora;
+      } else {
+        document.getElementById('confirmDetail').textContent = asesor + ' · ' + fechaLegible(payload.fecha) + ' · ' + payload.horaSalida + ' a ' + payload.horaRegreso + ' · ' + payload.desarrollo;
+      }
       document.getElementById('formWrap').classList.add('hidden');
       document.getElementById('confirmBox').classList.add('show');
     } else {
@@ -350,8 +533,14 @@ function resetForm(){
   estatusActual = null;
   asesorSel.value = '';
   desarrolloSel.value = '';
-  document.getElementById('horaSalida').value = '';
-  document.getElementById('horaRegreso').value = '';
+  fechaInput.value = hoyStr();
+  slotStartIdx = null;
+  slotEndIdx = null;
+  ocupados = [];
+  document.getElementById('slotsWrap').style.display = 'none';
+  document.getElementById('slotsGrid').innerHTML = '';
+  document.getElementById('ocupadosList').innerHTML = '';
+  document.getElementById('slotsStatus').textContent = 'Selecciona un desarrollo para ver horarios disponibles.';
   document.getElementById('toggleOficina').classList.remove('active');
   document.getElementById('toggleRecorrido').classList.remove('active');
   document.getElementById('recorridoFields').classList.remove('show');

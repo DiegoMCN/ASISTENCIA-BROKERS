@@ -6,10 +6,12 @@
 <meta name="theme-color" content="#202845" />
 <title>iMexico · Asistencia de asesores</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <style>
   :root{
     --navy:#202845;
+    --navy-light:#2e3a63;
     --gold:#C9A96E;
     --gold-dark:#8a6d3b;
     --cream:#F7F5F1;
@@ -22,65 +24,95 @@
     --danger-bg:#F5E4E2;
     --text:#202845;
     --muted:#75746D;
+    --font-display:'Poppins',sans-serif;
+    --font-body:'DM Sans',sans-serif;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);}
-  header{background:var(--navy);color:#fff;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
-  header h1{font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;margin:0;}
+  body{margin:0;font-family:var(--font-body);background:var(--cream);color:var(--text);-webkit-font-smoothing:antialiased;}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+  header .brand{display:flex;align-items:center;gap:12px;}
+  header .brand i{font-size:22px;color:var(--gold);}
+  header h1{font-family:var(--font-display);font-size:20px;font-weight:600;margin:0;letter-spacing:0.2px;}
   header p{margin:2px 0 0;font-size:12px;color:#C9CBDA;}
-  main{padding:20px 24px 60px;max-width:1180px;margin:0 auto;}
+  header input[type=month]{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;padding:8px 10px;font-family:var(--font-body);font-size:13px;color-scheme:dark;}
+  main{padding:22px 24px 60px;max-width:1180px;margin:0 auto;}
 
   .gate{
-    position:fixed;inset:0;background:var(--navy);z-index:999;
+    position:fixed;inset:0;background:radial-gradient(circle at top,var(--navy-light),var(--navy));z-index:999;
     display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;
   }
-  .gate input{padding:10px 14px;border-radius:8px;border:none;font-size:14px;width:220px;}
-  .gate button{padding:10px 18px;border-radius:8px;border:none;background:var(--gold);color:#3a2e14;font-weight:700;cursor:pointer;}
+  .gate i.lock{font-size:30px;color:var(--gold);margin-bottom:2px;}
+  .gate .title{color:#fff;font-family:var(--font-display);font-size:19px;font-weight:600;}
+  .gate input{padding:11px 14px;border-radius:9px;border:none;font-size:14px;width:240px;font-family:var(--font-body);}
+  .gate input:focus{outline:2px solid var(--gold);}
+  .gate button{padding:11px 20px;border-radius:9px;border:none;background:var(--gold);color:#3a2e14;font-weight:700;font-family:var(--font-body);cursor:pointer;}
+  .gate button:disabled{opacity:0.6;cursor:default;}
   .gate p{color:#C9CBDA;font-size:12px;margin:0;}
   .gate .err{color:#F0999A;font-size:12px;min-height:16px;}
 
-  .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:18px;}
-  select, input[type=month]{padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:#fff;}
-  .chip{font-size:12px;padding:6px 12px;border-radius:20px;border:1px solid var(--line);cursor:pointer;background:#fff;color:var(--muted);user-select:none;transition:opacity .15s;}
+  .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:18px;box-shadow:0 1px 2px rgba(32,40,69,0.04);}
+  .select-wrap{position:relative;display:inline-flex;align-items:center;}
+  .select-wrap i{position:absolute;left:10px;font-size:15px;color:var(--muted);pointer-events:none;}
+  select, input[type=month]{padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-family:var(--font-body);font-size:13px;color:var(--text);background:#fff;}
+  .select-wrap select{padding-left:30px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:6px 12px 6px 10px;border-radius:20px;border:1px solid var(--line);cursor:pointer;background:#fff;color:var(--muted);user-select:none;transition:opacity .15s;}
+  .chip::before{content:'';width:8px;height:8px;border-radius:50%;display:inline-block;}
   .chip.on-oficina{border-color:var(--ok);background:var(--ok-bg);color:var(--ok);font-weight:500;}
+  .chip.on-oficina::before{background:var(--ok);}
   .chip.on-recorrido{border-color:var(--warn);background:var(--warn-bg);color:var(--warn);font-weight:500;}
+  .chip.on-recorrido::before{background:var(--warn);}
   .chip.on-falta{border-color:var(--danger);background:var(--danger-bg);color:var(--danger);font-weight:500;}
+  .chip.on-falta::before{background:var(--danger);}
   .spacer{flex:1;}
-  button.refresh{background:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;color:var(--navy);}
+  button.refresh{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:12px;font-family:var(--font-body);cursor:pointer;color:var(--navy);}
+  button.refresh:hover{background:var(--cream);}
 
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
-  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
-  .stat p.label{margin:0 0 4px;font-size:12px;color:var(--muted);}
-  .stat p.value{margin:0;font-size:22px;font-weight:500;font-family:'DM Serif Display',serif;}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px;}
+  .stat{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(32,40,69,0.04);}
+  .stat .icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .stat p.label{margin:0 0 2px;font-size:12px;color:var(--muted);}
+  .stat p.value{margin:0;font-size:22px;font-weight:600;font-family:var(--font-display);color:var(--text);}
 
-  .grid-wrap{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;margin-bottom:16px;}
-  table{border-collapse:collapse;width:100%;min-width:640px;}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;align-items:center;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend i.dotmark{width:11px;height:11px;border-radius:50%;display:inline-block;}
+
+  .grid-wrap{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto;margin-bottom:16px;max-height:70vh;box-shadow:0 1px 2px rgba(32,40,69,0.04);}
+  table{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;}
   th, td{padding:6px 4px;text-align:center;font-size:11px;}
-  th{color:var(--muted);font-weight:400;border-bottom:1px solid var(--line);}
-  th.today, td.today-col{background:rgba(201,169,110,0.08);}
-  th.asesor-col, td.asesor-col{text-align:left;padding-left:8px;font-size:12px;color:var(--text);white-space:nowrap;}
-  .dot{width:18px;height:18px;border-radius:5px;margin:0 auto;cursor:pointer;border:1px solid rgba(0,0,0,0.05);position:relative;}
+  thead th{color:var(--muted);font-weight:500;font-family:var(--font-display);border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2;}
+  .th-dow{font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#B7B5AC;font-family:var(--font-body);margin-bottom:1px;}
+  .th-num{font-size:12px;}
+  th.today, td.today-col{background:rgba(201,169,110,0.10);}
+  th.asesor-col, td.asesor-col{text-align:left;padding-left:10px;font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;position:sticky;left:0;background:#fff;z-index:3;box-shadow:2px 0 4px -2px rgba(32,40,69,0.10);}
+  tbody tr:nth-child(even) td{background:rgba(32,40,69,0.02);}
+  tbody tr:nth-child(even) td.asesor-col{background:#fbfaf8;}
+  tbody tr:hover td{background:rgba(201,169,110,0.08);}
+  tbody tr:hover td.asesor-col{background:#f3ecdf;}
+  .dot{width:16px;height:16px;border-radius:50%;margin:0 auto;cursor:pointer;border:1px solid rgba(0,0,0,0.05);position:relative;transition:transform .1s;}
+  .dot:hover{transform:scale(1.2);}
   .dot.oficina{background:var(--ok);}
   .dot.recorrido{background:var(--warn);}
   .dot.falta{background:var(--danger-bg);border:1.5px solid var(--danger);}
   .dot.pendiente{background:#fff;border:1.5px dashed var(--line);}
   .dot.finde{background:var(--line);border-color:var(--line);cursor:default;}
+  .dot.finde:hover{transform:none;}
   .dot.futuro{background:transparent;border-color:transparent;cursor:default;}
-  .dot.multi::after{content:'';position:absolute;top:-2px;right:-2px;width:6px;height:6px;border-radius:50%;background:var(--navy);}
+  .dot.futuro:hover{transform:none;}
+  .dot.multi::after{content:'';position:absolute;top:-2px;right:-2px;width:6px;height:6px;border-radius:50%;background:var(--navy);border:1px solid #fff;}
   .dot.hidden{opacity:0.15;}
 
-  .detail{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--muted);min-height:20px;}
-  .detail b{color:var(--text);}
+  .detail{display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--muted);min-height:20px;box-shadow:0 1px 2px rgba(32,40,69,0.04);}
+  .detail i{font-size:16px;color:var(--gold-dark);margin-top:1px;}
+  .detail b{color:var(--text);font-family:var(--font-display);font-weight:600;}
   .loading{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin:0 0 14px;align-items:center;}
-  .legend span{display:inline-flex;align-items:center;gap:5px;}
-  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
 </style>
 </head>
 <body>
 
 <div class="gate" id="gate">
-  <p style="color:#fff;font-family:'DM Serif Display',serif;font-size:18px;">Asistencia de asesores</p>
+  <i class="ti ti-lock lock"></i>
+  <p class="title">Asistencia de asesores</p>
   <input type="password" id="gatePass" placeholder="Llave de acceso" />
   <button id="gateBtn" onclick="checkGate()">Entrar</button>
   <p class="err" id="gateErr"></p>
@@ -88,38 +120,41 @@
 </div>
 
 <header>
-  <div>
-    <h1>Asistencia de asesores</h1>
-    <p>iMexico Real Estate — vista gerencial</p>
+  <div class="brand">
+    <i class="ti ti-building-skyscraper"></i>
+    <div>
+      <h1>Asistencia de asesores</h1>
+      <p>iMexico Real Estate — vista gerencial</p>
+    </div>
   </div>
   <input type="month" id="mesInput" />
 </header>
 
 <main>
   <div class="filters">
-    <select id="filtroAsesor"><option value="">Todos los asesores</option></select>
-    <select id="filtroDesarrollo"><option value="">Todos los desarrollos</option></select>
+    <div class="select-wrap"><i class="ti ti-user"></i><select id="filtroAsesor"><option value="">Todos los asesores</option></select></div>
+    <div class="select-wrap"><i class="ti ti-map-pin"></i><select id="filtroDesarrollo"><option value="">Todos los desarrollos</option></select></div>
     <div class="chip on-oficina" id="chipOficina" onclick="toggleChip('oficina')">Oficina</div>
     <div class="chip on-recorrido" id="chipRecorrido" onclick="toggleChip('recorrido')">Recorrido</div>
     <div class="chip on-falta" id="chipFalta" onclick="toggleChip('falta')">Falta</div>
     <div class="spacer"></div>
-    <button class="refresh" onclick="cargarDatos()">Actualizar</button>
+    <button class="refresh" onclick="cargarDatos()"><i class="ti ti-refresh"></i> Actualizar</button>
   </div>
 
   <div class="stats" id="stats"></div>
 
   <div class="legend">
-    <span><i style="background:var(--ok)"></i> Oficina</span>
-    <span><i style="background:var(--warn)"></i> Recorrido</span>
-    <span><i style="background:var(--danger-bg);border:1.5px solid var(--danger)"></i> Falta (sin registro)</span>
-    <span><i style="background:#fff;border:1.5px dashed var(--line)"></i> Pendiente (hoy, aún no vence)</span>
-    <span><i style="background:var(--line)"></i> Fin de semana</span>
-    <span>● punto negro = más de un registro ese día</span>
+    <span><i class="dotmark" style="background:var(--ok)"></i> Oficina</span>
+    <span><i class="dotmark" style="background:var(--warn)"></i> Recorrido</span>
+    <span><i class="dotmark" style="background:var(--danger-bg);border:1.5px solid var(--danger)"></i> Falta (sin registro)</span>
+    <span><i class="dotmark" style="background:#fff;border:1.5px dashed var(--line)"></i> Pendiente (hoy, aún no vence)</span>
+    <span><i class="dotmark" style="background:var(--line)"></i> Fin de semana</span>
+    <span><i class="ti ti-point-filled" style="font-size:10px;color:var(--navy)"></i> más de un registro ese día</span>
   </div>
 
   <div class="grid-wrap" id="gridWrap"><div class="loading">Cargando registros…</div></div>
 
-  <div class="detail" id="detail">Toca una celda para ver el detalle del registro.</div>
+  <div class="detail" id="detail"><i class="ti ti-hand-click"></i><span>Toca una celda para ver el detalle del registro.</span></div>
 </main>
 
 <script>
@@ -252,11 +287,14 @@ function render(){
 
   const table = document.createElement('table');
   const thead = document.createElement('thead');
+  const DOW = ['D','L','M','M','J','V','S'];
+
   const trh = document.createElement('tr');
   trh.innerHTML = '<th class="asesor-col">Asesor</th>' +
     Array.from({length: daysInMonth}, (_, i) => {
       const f = year + '-' + String(month).padStart(2,'0') + '-' + String(i+1).padStart(2,'0');
-      return '<th class="' + (f === hoyStr ? 'today' : '') + '">' + (i + 1) + '</th>';
+      const dow = new Date(year, month - 1, i + 1).getDay();
+      return '<th class="' + (f === hoyStr ? 'today' : '') + '"><div class="th-dow">' + DOW[dow] + '</div><div class="th-num">' + (i + 1) + '</div></th>';
     }).join('');
   thead.appendChild(trh);
   table.appendChild(thead);
@@ -285,14 +323,14 @@ function render(){
       dot.className = 'dot';
 
       let estado;
-      if(esFinde){
-        estado = 'finde';
-      } else if(esFuturo){
-        estado = 'futuro';
-      } else if(recs.some(r => r.estatus === 'RECORRIDO')){
+      if(recs.some(r => r.estatus === 'RECORRIDO')){
         estado = 'recorrido';
       } else if(recs.some(r => r.estatus === 'OFICINA')){
         estado = 'oficina';
+      } else if(esFinde){
+        estado = 'finde';
+      } else if(esFuturo){
+        estado = 'futuro';
       } else if(esHoy){
         estado = hoy.getHours() >= CUTOFF_HOUR ? 'falta' : 'pendiente';
       } else {
@@ -326,28 +364,31 @@ function render(){
 
   const pctAsistencia = diasHabilesPasados > 0 ? Math.round((diasConRegistro / diasHabilesPasados) * 100) : 0;
   document.getElementById('stats').innerHTML =
-    stat('Asistencia del mes', pctAsistencia + '%') +
-    stat('Recorridos registrados', totalRecorridos) +
-    stat('Faltas automáticas', totalFaltas);
+    stat('Asistencia del mes', pctAsistencia + '%', 'ti-chart-donut', 'var(--ok)', 'var(--ok-bg)') +
+    stat('Recorridos registrados', totalRecorridos, 'ti-route', 'var(--warn)', 'var(--warn-bg)') +
+    stat('Faltas automáticas', totalFaltas, 'ti-user-x', 'var(--danger)', 'var(--danger-bg)');
 }
 
-function stat(label, value){
-  return '<div class="stat"><p class="label">' + label + '</p><p class="value">' + value + '</p></div>';
+function stat(label, value, icon, color, bg){
+  return '<div class="stat"><div class="icon" style="color:' + color + ';background:' + bg + '"><i class="ti ' + icon + '"></i></div><div><p class="label">' + label + '</p><p class="value">' + value + '</p></div></div>';
 }
 
 function mostrarDetalle(asesor, fecha, recs, estado){
   const el = document.getElementById('detail');
-  if(estado === 'finde'){ el.innerHTML = '<b>' + asesor + '</b> — ' + fecha + ': fin de semana.'; return; }
-  if(estado === 'futuro'){ el.innerHTML = '<b>' + asesor + '</b> — ' + fecha + ': día futuro.'; return; }
+  const iconos = { finde: 'ti-calendar-off', futuro: 'ti-calendar', falta: 'ti-alert-circle', pendiente: 'ti-clock', oficina: 'ti-building', recorrido: 'ti-route' };
+  const icon = iconos[estado] || 'ti-hand-click';
+
+  if(estado === 'finde'){ el.innerHTML = '<i class="ti ' + icon + '"></i><span><b>' + asesor + '</b> — ' + fecha + ': fin de semana.</span>'; return; }
+  if(estado === 'futuro'){ el.innerHTML = '<i class="ti ' + icon + '"></i><span><b>' + asesor + '</b> — ' + fecha + ': día futuro.</span>'; return; }
   if(recs.length === 0){
     const txt = estado === 'falta' ? 'falta — no se registró en el día.' : 'aún no registra hoy (antes de las ' + CUTOFF_HOUR + ':00).';
-    el.innerHTML = '<b>' + asesor + '</b> — ' + fecha + ': ' + txt;
+    el.innerHTML = '<i class="ti ' + icon + '"></i><span><b>' + asesor + '</b> — ' + fecha + ': ' + txt + '</span>';
     return;
   }
   const partes = recs.map(r => r.estatus === 'RECORRIDO'
     ? 'Recorrido — ' + r.desarrollo + (r.horaSalida ? ' — ' + r.horaSalida + ' a ' + (r.horaRegreso || '¿?') : '')
     : 'En oficina' + (r.timestamp ? ' (' + r.timestamp.slice(11,16) + ')' : ''));
-  el.innerHTML = '<b>' + asesor + '</b> — ' + fecha + ' (' + recs.length + ' registro' + (recs.length > 1 ? 's' : '') + '): ' + partes.join(' · ');
+  el.innerHTML = '<i class="ti ' + icon + '"></i><span><b>' + asesor + '</b> — ' + fecha + ' (' + recs.length + ' registro' + (recs.length > 1 ? 's' : '') + '): ' + partes.join(' · ') + '</span>';
 }
 
 cargarConfig();
