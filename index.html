@@ -518,6 +518,13 @@ function registrar(){
       }
       document.getElementById('formWrap').classList.add('hidden');
       document.getElementById('confirmBox').classList.add('show');
+    } else if(res.error === 'horario_ocupado'){
+      showError(res.mensaje || 'Ese horario ya lo tomó otro asesor. Elige otro.');
+      slotStartIdx = null;
+      slotEndIdx = null;
+      cargarDisponibilidad(); // refresca de inmediato para que ya no aparezca ese horario
+    } else if(res.error === 'ocupado_temporal'){
+      showError(res.mensaje || 'El sistema está ocupado, intenta de nuevo en unos segundos.');
     } else {
       showError('No se pudo registrar. Intenta de nuevo.');
     }
