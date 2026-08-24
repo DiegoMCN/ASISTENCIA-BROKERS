@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <meta name="theme-color" content="#202845" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Check-in" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23202845'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23C9A96E' font-family='sans-serif'%3EiM%3C/text%3E%3C/svg%3E" />
 <title>iMexico · Check-in de asesores</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -305,21 +307,34 @@ const submitBtn = document.getElementById('submitBtn');
 submitBtn.disabled = true;
 submitBtn.textContent = 'Cargando…';
 
-fetch(DEPLOY_URL + '?action=config')
-  .then(r => r.json())
-  .then(res => {
-    if(res.ok){
-      res.asesores.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; asesorSel.appendChild(o); });
-      res.desarrollos.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; desarrolloSel.appendChild(o); });
-    } else {
-      showError('No se pudo cargar la lista de asesores.');
-    }
-  })
-  .catch(() => showError('Sin conexión. Recarga la página.'))
-  .finally(() => {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Registrar';
-  });
+function cargarConfig(intentoAutomatico){
+  fetchConTimeout_(DEPLOY_URL + '?action=config')
+    .then(r => r.json())
+    .then(res => {
+      if(res.ok){
+        asesorSel.innerHTML = '<option value="" disabled selected>Selecciona tu nombre</option>';
+        desarrolloSel.innerHTML = '<option value="" disabled selected>Selecciona el desarrollo</option>';
+        res.asesores.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; asesorSel.appendChild(o); });
+        res.desarrollos.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; desarrolloSel.appendChild(o); });
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Registrar';
+        document.getElementById('errorMsg').classList.remove('show');
+      } else {
+        showError('No se pudo cargar la lista de asesores.');
+      }
+    })
+    .catch(err => {
+      console.error('Fallo al cargar configuración:', err);
+      if(!intentoAutomatico){
+        setTimeout(() => cargarConfig(true), 1500);
+        return;
+      }
+      const el = document.getElementById('errorMsg');
+      el.innerHTML = 'Sin conexión — no se pudo cargar la lista de asesores. <a href="#" onclick="cargarConfig();return false;" style="color:var(--gold-dark);font-weight:600;">Reintentar</a>';
+      el.classList.add('show');
+    });
+}
+cargarConfig();
 
 // "Hoy" según la zona horaria de la Riviera Maya, sin importar en qué huso
 // esté configurado el celular del asesor — así siempre coincide con el
@@ -399,7 +414,15 @@ function fechaLegible(f){
   return new Date(y, m-1, d).toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
 }
 
-function cargarDisponibilidad(){
+// fetch con límite de tiempo — si Apps Script tarda en "despertar" (cold start)
+// o la señal se corta a medias, no se queda cargando para siempre.
+function fetchConTimeout_(url, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms || 12000);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
+
+function cargarDisponibilidad(intentoAutomatico){
   const desarrollo = desarrolloSel.value;
   const fecha = fechaInput.value;
   if(!desarrollo || !fecha) return;
@@ -411,7 +434,7 @@ function cargarDisponibilidad(){
   document.getElementById('ocupadosList').innerHTML = '';
   slotStartIdx = null; slotEndIdx = null;
 
-  fetch(DEPLOY_URL + '?action=disponibilidad&desarrollo=' + encodeURIComponent(desarrollo) + '&fecha=' + fecha)
+  fetchConTimeout_(DEPLOY_URL + '?action=disponibilidad&desarrollo=' + encodeURIComponent(desarrollo) + '&fecha=' + fecha)
     .then(r => r.json())
     .then(res => {
       if(res.ok){
@@ -422,10 +445,18 @@ function cargarDisponibilidad(){
         renderSlots();
         renderOcupados();
       } else {
-        status.textContent = 'No se pudo consultar disponibilidad.';
+        status.innerHTML = 'No se pudo consultar disponibilidad. <a href="#" onclick="cargarDisponibilidad();return false;" style="color:var(--gold-dark);font-weight:600;">Reintentar</a>';
       }
     })
-    .catch(() => { status.textContent = 'Sin conexión — no se pudo consultar disponibilidad.'; });
+    .catch(err => {
+      console.error('Fallo al consultar disponibilidad:', err);
+      // un reintento automático y silencioso primero (cubre cortes breves de señal)
+      if(!intentoAutomatico){
+        setTimeout(() => cargarDisponibilidad(true), 1500);
+        return;
+      }
+      status.innerHTML = 'Se perdió la conexión al consultar horarios. <a href="#" onclick="cargarDisponibilidad();return false;" style="color:var(--gold-dark);font-weight:600;">Reintentar</a>';
+    });
 }
 
 function renderOcupados(){
