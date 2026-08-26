@@ -74,6 +74,40 @@
   .stat p.label{margin:0 0 2px;font-size:12px;color:var(--muted);}
   .stat p.value{margin:0;font-size:22px;font-weight:600;font-family:var(--font-display);color:var(--text);}
 
+  .section-title{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-weight:600;font-size:15px;color:var(--text);margin:0 0 10px;}
+  .section-title i{color:var(--gold-dark);}
+  .live-section{margin-bottom:22px;}
+  .live-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+  .live-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:10px 12px;box-shadow:0 1px 2px rgba(32,40,69,0.04);}
+  .live-card.estado-oficina{border-left-color:var(--ok);}
+  .live-card.estado-recorrido{border-left-color:var(--warn);}
+  .live-card.estado-falta{border-left-color:var(--danger);}
+  .live-card.estado-justificada{border-left-color:#5C7AA8;}
+  .live-card.estado-pendiente{border-left-color:var(--line);}
+  .live-card.estado-finde{border-left-color:var(--line);opacity:0.7;}
+  .live-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;}
+  .live-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .live-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--cream);color:var(--muted);white-space:nowrap;flex-shrink:0;}
+  .estado-oficina .live-badge{background:var(--ok-bg);color:var(--ok);}
+  .estado-recorrido .live-badge{background:var(--warn-bg);color:var(--warn);}
+  .estado-falta .live-badge{background:var(--danger-bg);color:var(--danger);}
+  .estado-justificada .live-badge{background:#E7ECF4;color:#5C7AA8;}
+  .live-detail{font-size:11px;color:var(--muted);}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;}
+  @media (max-width: 720px){ .two-col{grid-template-columns:1fr;} }
+  .panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(32,40,69,0.04);}
+  .empty-note{font-size:12px;color:var(--muted);padding:6px 0;}
+  .falta-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;}
+  .falta-item:first-child{border-top:none;}
+  .justificar-btn{font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid var(--gold-dark);background:#fff;color:var(--gold-dark);cursor:pointer;font-family:var(--font-body);white-space:nowrap;}
+  .justificar-btn:hover{background:var(--warn-bg);}
+  .justificar-btn:disabled{opacity:0.6;cursor:default;}
+  .ranking-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;}
+  .ranking-item:first-child{border-top:none;}
+  .ranking-count{font-size:11px;padding:2px 9px;border-radius:10px;background:var(--cream);color:var(--muted);font-weight:500;}
+  .ranking-item.ranking-alerta .ranking-count{background:var(--danger-bg);color:var(--danger);}
+
   .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;align-items:center;}
   .legend span{display:inline-flex;align-items:center;gap:6px;}
   .legend i.dotmark{width:11px;height:11px;border-radius:50%;display:inline-block;}
@@ -95,6 +129,7 @@
   .dot.oficina{background:var(--ok);}
   .dot.recorrido{background:var(--warn);}
   .dot.falta{background:var(--danger-bg);border:1.5px solid var(--danger);}
+  .dot.justificada{background:#E7ECF4;border:1.5px solid #5C7AA8;}
   .dot.pendiente{background:#fff;border:1.5px dashed var(--line);}
   .dot.finde{background:var(--line);border-color:var(--line);cursor:default;}
   .dot.finde:hover{transform:none;}
@@ -144,10 +179,27 @@
 
   <div class="stats" id="stats"></div>
 
+  <div class="live-section">
+    <p class="section-title"><i class="ti ti-bolt"></i> Ahora mismo — <span id="hoyLegible"></span></p>
+    <div class="live-cards" id="liveCards"></div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <p class="section-title"><i class="ti ti-user-exclamation"></i> Faltas de hoy</p>
+      <div id="faltasHoyList"><div class="empty-note">Cargando…</div></div>
+    </div>
+    <div class="panel">
+      <p class="section-title"><i class="ti ti-trending-down"></i> Más faltas este mes</p>
+      <div id="rankingFaltas"><div class="empty-note">Cargando…</div></div>
+    </div>
+  </div>
+
   <div class="legend">
     <span><i class="dotmark" style="background:var(--ok)"></i> Oficina</span>
     <span><i class="dotmark" style="background:var(--warn)"></i> Recorrido</span>
     <span><i class="dotmark" style="background:var(--danger-bg);border:1.5px solid var(--danger)"></i> Falta (sin registro)</span>
+    <span><i class="dotmark" style="background:#E7ECF4;border:1.5px solid #5C7AA8"></i> Falta justificada</span>
     <span><i class="dotmark" style="background:#fff;border:1.5px dashed var(--line)"></i> Pendiente (hoy, aún no vence)</span>
     <span><i class="dotmark" style="background:var(--line)"></i> Fin de semana</span>
     <span><i class="ti ti-point-filled" style="font-size:10px;color:var(--navy)"></i> más de un registro ese día</span>
@@ -173,6 +225,9 @@ let activeFilters = { oficina: true, recorrido: true, falta: true };
 // de esta pestaña; se borra sola al cerrar el navegador.
 let sessionKey = sessionStorage.getItem('imexico_key') || '';
 const CUTOFF_HOUR = 10; // hora límite (24h) para considerar falta el día de hoy si no ha registrado
+// "asesor|fecha" de cada falta que la administradora ya marcó como justificada.
+let justificaciones = new Set();
+function esJustificada(asesor, fecha){ return justificaciones.has(asesor + '|' + fecha); }
 // ──────────────────────────────────────────────────────────────────────
 
 const mesInput = document.getElementById('mesInput');
@@ -204,7 +259,12 @@ function cargarDatos(){
   document.getElementById('gridWrap').innerHTML = '<div class="loading">Cargando registros…</div>';
   fetchList_(sessionKey)
     .then(res => {
-      if(res.ok){ allRecords = res.records; render(); }
+      if(res.ok){
+        allRecords = res.records;
+        justificaciones = new Set((res.justificaciones || []).map(j => j.asesor + '|' + j.fecha));
+        render();
+        renderHoy();
+      }
       else { document.getElementById('gridWrap').innerHTML = '<div class="loading">' + (res.error || 'No se pudieron cargar los datos.') + '</div>'; }
     })
     .catch(() => { document.getElementById('gridWrap').innerHTML = '<div class="loading">Sin conexión con el backend.</div>'; });
@@ -224,8 +284,10 @@ function checkGate(){
         sessionKey = val;
         sessionStorage.setItem('imexico_key', val);
         allRecords = res.records;
+        justificaciones = new Set((res.justificaciones || []).map(j => j.asesor + '|' + j.fecha));
         document.getElementById('gate').style.display = 'none';
         render();
+        renderHoy();
       } else {
         document.getElementById('gateErr').textContent = 'Llave incorrecta.';
       }
@@ -242,8 +304,10 @@ function intentarSesion(){
   fetchList_(sessionKey).then(res => {
     if(res.ok){
       allRecords = res.records;
+      justificaciones = new Set((res.justificaciones || []).map(j => j.asesor + '|' + j.fecha));
       document.getElementById('gate').style.display = 'none';
       render();
+      renderHoy();
     } else {
       sessionStorage.removeItem('imexico_key');
       sessionKey = '';
@@ -302,6 +366,8 @@ function render(){
 
   const tbody = document.createElement('tbody');
   let diasHabilesPasados = 0, diasConRegistro = 0, totalRecorridos = 0, totalFaltas = 0;
+  const faltasPorAsesor = {};
+  asesoresAMostrar.forEach(a => { faltasPorAsesor[a] = 0; });
 
   asesoresAMostrar.forEach(asesor => {
     const tr = document.createElement('tr');
@@ -332,6 +398,8 @@ function render(){
         estado = 'finde';
       } else if(esFuturo){
         estado = 'futuro';
+      } else if(esJustificada(asesor, fecha)){
+        estado = 'justificada';
       } else if(esHoy){
         estado = hoy.getHours() >= CUTOFF_HOUR ? 'falta' : 'pendiente';
       } else {
@@ -342,14 +410,14 @@ function render(){
       if(recs.length > 1) dot.classList.add('multi');
       if((estado === 'oficina' || estado === 'recorrido' || estado === 'falta') && !activeFilters[estado]) dot.classList.add('hidden');
 
-      if(!esFinde && !esFuturo){
+      if(!esFinde && !esFuturo && estado !== 'justificada'){
         diasHabilesPasados++;
         if(recs.length > 0) diasConRegistro++;
-        if(estado === 'falta') totalFaltas++;
+        if(estado === 'falta'){ totalFaltas++; faltasPorAsesor[asesor]++; }
       }
       totalRecorridos += recs.filter(r => r.estatus === 'RECORRIDO').length;
 
-      const resumen = recs.length ? recs.map(r => r.estatus === 'RECORRIDO' ? 'Recorrido: ' + r.desarrollo : 'Oficina').join(' / ') : (estado === 'falta' ? 'Falta' : estado === 'pendiente' ? 'Pendiente' : '');
+      const resumen = recs.length ? recs.map(r => r.estatus === 'RECORRIDO' ? 'Recorrido: ' + r.desarrollo : 'Oficina').join(' / ') : (estado === 'falta' ? 'Falta' : estado === 'justificada' ? 'Falta justificada' : estado === 'pendiente' ? 'Pendiente' : '');
       dot.title = asesor + ' — ' + fecha + (resumen ? ' — ' + resumen : '');
       dot.onclick = () => mostrarDetalle(asesor, fecha, recs, estado);
       td.appendChild(dot);
@@ -362,6 +430,7 @@ function render(){
   const wrap = document.getElementById('gridWrap');
   wrap.innerHTML = '';
   wrap.appendChild(table);
+  renderRankingFaltas(faltasPorAsesor);
 
   const pctAsistencia = diasHabilesPasados > 0 ? Math.round((diasConRegistro / diasHabilesPasados) * 100) : 0;
   document.getElementById('stats').innerHTML =
@@ -376,13 +445,13 @@ function stat(label, value, icon, color, bg){
 
 function mostrarDetalle(asesor, fecha, recs, estado){
   const el = document.getElementById('detail');
-  const iconos = { finde: 'ti-calendar-off', futuro: 'ti-calendar', falta: 'ti-alert-circle', pendiente: 'ti-clock', oficina: 'ti-building', recorrido: 'ti-route' };
+  const iconos = { finde: 'ti-calendar-off', futuro: 'ti-calendar', falta: 'ti-alert-circle', justificada: 'ti-shield-check', pendiente: 'ti-clock', oficina: 'ti-building', recorrido: 'ti-route' };
   const icon = iconos[estado] || 'ti-hand-click';
 
   if(estado === 'finde'){ el.innerHTML = '<i class="ti ' + icon + '"></i><span><b>' + asesor + '</b> — ' + fecha + ': fin de semana.</span>'; return; }
   if(estado === 'futuro'){ el.innerHTML = '<i class="ti ' + icon + '"></i><span><b>' + asesor + '</b> — ' + fecha + ': día futuro.</span>'; return; }
   if(recs.length === 0){
-    const txt = estado === 'falta' ? 'falta — no se registró en el día.' : 'aún no registra hoy (antes de las ' + CUTOFF_HOUR + ':00).';
+    const txt = estado === 'justificada' ? 'falta justificada.' : estado === 'falta' ? 'falta — no se registró en el día.' : 'aún no registra hoy (antes de las ' + CUTOFF_HOUR + ':00).';
     el.innerHTML = '<i class="ti ' + icon + '"></i><span><b>' + asesor + '</b> — ' + fecha + ': ' + txt + '</span>';
     return;
   }
@@ -393,6 +462,128 @@ function mostrarDetalle(asesor, fecha, recs, estado){
 }
 
 cargarConfig();
+
+// ── "Ahora mismo": qué está haciendo cada asesor hoy, sin importar qué mes
+// esté viendo el filtro del calendario — esto siempre es sobre hoy. ──────
+function renderHoy(){
+  const hoy = new Date();
+  const fechaHoy = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(hoy.getDate()).padStart(2,'0');
+  document.getElementById('hoyLegible').textContent = hoy.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+  const esFinde = hoy.getDay() === 0 || hoy.getDay() === 6;
+
+  const cardsEl = document.getElementById('liveCards');
+  cardsEl.innerHTML = '';
+  const faltasHoy = [];
+
+  ASESORES.forEach(asesor => {
+    const recs = allRecords.filter(r => r.asesor === asesor && r.fecha === fechaHoy);
+    const recorridos = recs.filter(r => r.estatus === 'RECORRIDO').sort((a,b) => a.horaSalida.localeCompare(b.horaSalida));
+    let estado, badge, detalle;
+
+    if(recorridos.length){
+      estado = 'recorrido'; badge = 'Recorrido';
+      detalle = recorridos.map(r => r.desarrollo + ' · ' + r.horaSalida + ' a ' + r.horaRegreso).join(' · ');
+    } else if(recs.some(r => r.estatus === 'OFICINA')){
+      estado = 'oficina'; badge = 'Oficina'; detalle = 'En oficina hoy.';
+    } else if(esFinde){
+      estado = 'finde'; badge = 'Fin de semana'; detalle = 'No aplica hoy.';
+    } else if(esJustificada(asesor, fechaHoy)){
+      estado = 'justificada'; badge = 'Justificada'; detalle = 'Falta justificada.';
+    } else if(hoy.getHours() >= CUTOFF_HOUR){
+      estado = 'falta'; badge = 'Falta'; detalle = 'Sin registro hoy.';
+      faltasHoy.push(asesor);
+    } else {
+      estado = 'pendiente'; badge = 'Pendiente'; detalle = 'Aún no registra (antes de las ' + CUTOFF_HOUR + ':00).';
+    }
+
+    const card = document.createElement('div');
+    card.className = 'live-card estado-' + estado;
+    const top = document.createElement('div');
+    top.className = 'live-card-top';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'live-name';
+    nameEl.textContent = asesor;
+    const badgeEl = document.createElement('span');
+    badgeEl.className = 'live-badge';
+    badgeEl.textContent = badge;
+    top.appendChild(nameEl);
+    top.appendChild(badgeEl);
+    const detailEl = document.createElement('div');
+    detailEl.className = 'live-detail';
+    detailEl.textContent = detalle;
+    card.appendChild(top);
+    card.appendChild(detailEl);
+    cardsEl.appendChild(card);
+  });
+
+  renderFaltasHoy(faltasHoy, fechaHoy);
+}
+
+function renderFaltasHoy(lista, fechaHoy){
+  const el = document.getElementById('faltasHoyList');
+  el.innerHTML = '';
+  if(!lista.length){ el.innerHTML = '<div class="empty-note">Nadie en falta hoy.</div>'; return; }
+  lista.forEach(asesor => {
+    const row = document.createElement('div');
+    row.className = 'falta-item';
+    const span = document.createElement('span');
+    span.textContent = asesor;
+    const btn = document.createElement('button');
+    btn.className = 'justificar-btn';
+    btn.textContent = 'Justificar';
+    btn.onclick = () => justificar(asesor, fechaHoy, btn);
+    row.appendChild(span);
+    row.appendChild(btn);
+    el.appendChild(row);
+  });
+}
+
+// Ranking de faltas del mes que esté viendo el filtro (se recalcula cada vez
+// que cambian de mes/asesor/desarrollo, junto con el resto del calendario).
+function renderRankingFaltas(faltasPorAsesor){
+  const el = document.getElementById('rankingFaltas');
+  const entradas = Object.entries(faltasPorAsesor).filter(([,n]) => n > 0).sort((a,b) => b[1] - a[1]).slice(0, 6);
+  el.innerHTML = '';
+  if(!entradas.length){ el.innerHTML = '<div class="empty-note">Sin faltas este mes.</div>'; return; }
+  entradas.forEach(([asesor, n]) => {
+    const row = document.createElement('div');
+    row.className = 'ranking-item' + (n >= 3 ? ' ranking-alerta' : '');
+    const span = document.createElement('span');
+    span.textContent = asesor;
+    const count = document.createElement('span');
+    count.className = 'ranking-count';
+    count.textContent = n + (n === 1 ? ' falta' : ' faltas');
+    row.appendChild(span);
+    row.appendChild(count);
+    el.appendChild(row);
+  });
+}
+
+// Solo la llave de administradora (ya validada por el gate) puede justificar
+// — el servidor la vuelve a revisar de todos modos, esto no es la seguridad
+// real, solo evita el viaje redondo si algo saliera mal.
+function justificar(asesor, fecha, btnEl){
+  btnEl.disabled = true;
+  btnEl.textContent = 'Guardando…';
+  fetch(DEPLOY_URL + '?action=justificar&key=' + encodeURIComponent(sessionKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ asesor: asesor, fecha: fecha })
+  })
+  .then(r => r.json())
+  .then(res => {
+    if(res.ok){
+      cargarDatos(); // refresca tarjetas, faltas de hoy, ranking y calendario a la vez
+    } else {
+      btnEl.disabled = false;
+      btnEl.textContent = 'Reintentar';
+    }
+  })
+  .catch(() => {
+    btnEl.disabled = false;
+    btnEl.textContent = 'Reintentar';
+  });
+}
 </script>
 </body>
 </html>
