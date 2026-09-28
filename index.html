@@ -106,18 +106,18 @@
     display:flex;
     flex-direction:column;
     align-items:center;
-    gap:6px;
-    padding:16px 8px;
+    gap:5px;
+    padding:13px 4px;
     border-radius:11px;
     border:1.5px solid var(--line);
     background:#fff;
     cursor:pointer;
     font-family:'DM Sans',sans-serif;
-    font-size:13px;
+    font-size:11.5px;
     color:var(--muted);
     transition:border-color .15s, background .15s, color .15s;
   }
-  .toggle svg{width:22px;height:22px;stroke:var(--muted);transition:stroke .15s;}
+  .toggle svg{width:19px;height:19px;stroke:var(--muted);transition:stroke .15s;}
   .toggle.active{
     border-color:var(--gold-dark);
     background:rgba(201,169,110,0.12);
@@ -255,21 +255,29 @@
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M5 17a2 2 0 104 0M15 17a2 2 0 104 0M5 17V10l2-5h10l2 5v7"/></svg>
           <span>Recorrido</span>
         </div>
+        <div class="toggle" id="toggleAgencia" onclick="setEstatus('AGENCIA')">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2M3 12h18"/></svg>
+          <span>Agencia</span>
+        </div>
       </div>
 
       <div class="conditional" id="recorridoFields">
-        <div class="field">
+        <div class="field" id="desarrolloField">
           <label for="desarrollo">Desarrollo</label>
           <select id="desarrollo">
             <option value="" disabled selected>Selecciona el desarrollo</option>
           </select>
         </div>
+        <div class="field" id="agenciaField" style="display:none;">
+          <label for="agenciaNombre">Nombre de la agencia</label>
+          <input type="text" id="agenciaNombre" placeholder="Ej. Century 21, RE/MAX…" />
+        </div>
         <div class="field">
-          <label for="fechaRecorrido">Fecha del recorrido</label>
+          <label for="fechaRecorrido">Fecha</label>
           <input type="date" id="fechaRecorrido" />
         </div>
         <div id="slotsWrap" style="display:none;">
-          <label id="slotsLabel">Horario del recorrido</label>
+          <label id="slotsLabel">Horario</label>
           <div class="slots-status" id="slotsStatus">Selecciona un desarrollo para ver horarios disponibles.</div>
           <div class="slots-grid" id="slotsGrid"></div>
           <div class="slots-hint" id="slotsHint"></div>
@@ -347,8 +355,10 @@ fechaInput.min = hoyStr();
 
 function buildSlots(){
   const slots = [];
-  for(let h = WORK_START; h < WORK_END; h++){
-    slots.push({ start: String(h).padStart(2,'0') + ':00', end: String(h+1).padStart(2,'0') + ':00', startMin: h*60, endMin: (h+1)*60 });
+  for(let mins = WORK_START * 60; mins < WORK_END * 60; mins += 30){
+    const endMins = mins + 30;
+    const fmt = m => String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+    slots.push({ start: fmt(mins), end: fmt(endMins), startMin: mins, endMin: endMins });
   }
   return slots;
 }
@@ -471,12 +481,20 @@ function renderOcupados(){
 }
 
 desarrolloSel.addEventListener('change', () => {
+  if(estatusActual !== 'RECORRIDO') return;
   document.getElementById('slotsWrap').style.display = 'block';
   cargarDisponibilidad();
 });
 fechaInput.addEventListener('change', () => {
   if(fechaInput.value < hoyStr()){ fechaInput.value = hoyStr(); }
-  if(desarrolloSel.value) cargarDisponibilidad();
+  if(estatusActual === 'RECORRIDO' && desarrolloSel.value){
+    cargarDisponibilidad();
+  } else if(estatusActual === 'AGENCIA'){
+    ocupados = [];
+    slotStartIdx = null; slotEndIdx = null;
+    document.getElementById('slotsLabel').textContent = 'Horario de la visita — ' + fechaLegible(fechaInput.value);
+    renderSlots();
+  }
 });
 
 function updateDatetime(){
@@ -493,8 +511,32 @@ function setEstatus(v){
   estatusActual = v;
   document.getElementById('toggleOficina').classList.toggle('active', v === 'OFICINA');
   document.getElementById('toggleRecorrido').classList.toggle('active', v === 'RECORRIDO');
-  document.getElementById('recorridoFields').classList.toggle('show', v === 'RECORRIDO');
+  document.getElementById('toggleAgencia').classList.toggle('active', v === 'AGENCIA');
+  document.getElementById('recorridoFields').classList.toggle('show', v === 'RECORRIDO' || v === 'AGENCIA');
+  document.getElementById('desarrolloField').style.display = v === 'RECORRIDO' ? 'block' : 'none';
+  document.getElementById('agenciaField').style.display = v === 'AGENCIA' ? 'block' : 'none';
   document.getElementById('errorMsg').classList.remove('show');
+
+  slotStartIdx = null;
+  slotEndIdx = null;
+  document.getElementById('slotsHint').textContent = '';
+
+  if(v === 'AGENCIA'){
+    // Una visita a agencia no compite por un recurso compartido (a diferencia
+    // de un desarrollo), así que no hay que consultar disponibilidad — todos
+    // los horarios se muestran libres de inmediato.
+    ocupados = [];
+    document.getElementById('slotsWrap').style.display = 'block';
+    document.getElementById('slotsLabel').textContent = 'Horario de la visita — ' + fechaLegible(fechaInput.value);
+    document.getElementById('slotsStatus').textContent = 'Toca un horario libre de inicio y otro de fin.';
+    document.getElementById('ocupadosList').innerHTML = '';
+    renderSlots();
+  } else if(v === 'RECORRIDO'){
+    document.getElementById('slotsWrap').style.display = desarrolloSel.value ? 'block' : 'none';
+    if(desarrolloSel.value) cargarDisponibilidad();
+  } else {
+    document.getElementById('slotsWrap').style.display = 'none';
+  }
 }
 
 function showError(msg){
@@ -506,12 +548,13 @@ function showError(msg){
 function registrar(){
   const asesor = asesorSel.value;
   if(!asesor){ showError('Selecciona tu nombre.'); return; }
-  if(!estatusActual){ showError('Selecciona Oficina o Recorrido.'); return; }
+  if(!estatusActual){ showError('Selecciona Oficina, Recorrido o Agencia.'); return; }
 
   let payload = {
     asesor: asesor,
     estatus: estatusActual,
     desarrollo: '',
+    agencia: '',
     horaSalida: '',
     horaRegreso: ''
   };
@@ -522,6 +565,15 @@ function registrar(){
     if(!fechaInput.value){ showError('Selecciona la fecha del recorrido.'); return; }
     if(slotStartIdx === null || slotEndIdx === null){ showError('Selecciona un horario de inicio y uno de fin.'); return; }
     payload.desarrollo = des;
+    payload.fecha = fechaInput.value;
+    payload.horaSalida = SLOTS[slotStartIdx].start;
+    payload.horaRegreso = SLOTS[slotEndIdx].end;
+  } else if(estatusActual === 'AGENCIA'){
+    const nombreAgencia = document.getElementById('agenciaNombre').value.trim();
+    if(!nombreAgencia){ showError('Escribe el nombre de la agencia.'); return; }
+    if(!fechaInput.value){ showError('Selecciona la fecha de la visita.'); return; }
+    if(slotStartIdx === null || slotEndIdx === null){ showError('Selecciona un horario de inicio y uno de fin.'); return; }
+    payload.agencia = nombreAgencia;
     payload.fecha = fechaInput.value;
     payload.horaSalida = SLOTS[slotStartIdx].start;
     payload.horaRegreso = SLOTS[slotEndIdx].end;
@@ -540,12 +592,15 @@ function registrar(){
   .then(r => r.json())
   .then(res => {
     if(res.ok){
-      document.getElementById('confirmTitle').textContent = estatusActual === 'OFICINA' ? 'En oficina' : 'Recorrido agendado';
+      const titulos = { OFICINA: 'En oficina', RECORRIDO: 'Recorrido agendado', AGENCIA: 'Visita agendada' };
+      document.getElementById('confirmTitle').textContent = titulos[estatusActual];
       if(estatusActual === 'OFICINA'){
         const hora = new Date().toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
         document.getElementById('confirmDetail').textContent = asesor + ' · ' + hora;
-      } else {
+      } else if(estatusActual === 'RECORRIDO'){
         document.getElementById('confirmDetail').textContent = asesor + ' · ' + fechaLegible(payload.fecha) + ' · ' + payload.horaSalida + ' a ' + payload.horaRegreso + ' · ' + payload.desarrollo;
+      } else {
+        document.getElementById('confirmDetail').textContent = asesor + ' · ' + fechaLegible(payload.fecha) + ' · ' + payload.horaSalida + ' a ' + payload.horaRegreso + ' · ' + payload.agencia;
       }
       document.getElementById('formWrap').classList.add('hidden');
       document.getElementById('confirmBox').classList.add('show');
@@ -571,6 +626,7 @@ function resetForm(){
   estatusActual = null;
   asesorSel.value = '';
   desarrolloSel.value = '';
+  document.getElementById('agenciaNombre').value = '';
   fechaInput.value = hoyStr();
   slotStartIdx = null;
   slotEndIdx = null;
@@ -579,8 +635,11 @@ function resetForm(){
   document.getElementById('slotsGrid').innerHTML = '';
   document.getElementById('ocupadosList').innerHTML = '';
   document.getElementById('slotsStatus').textContent = 'Selecciona un desarrollo para ver horarios disponibles.';
+  document.getElementById('desarrolloField').style.display = 'block';
+  document.getElementById('agenciaField').style.display = 'none';
   document.getElementById('toggleOficina').classList.remove('active');
   document.getElementById('toggleRecorrido').classList.remove('active');
+  document.getElementById('toggleAgencia').classList.remove('active');
   document.getElementById('recorridoFields').classList.remove('show');
   document.getElementById('confirmBox').classList.remove('show');
   document.getElementById('formWrap').classList.remove('hidden');

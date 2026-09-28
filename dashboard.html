@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root{
     --navy:#202845;
@@ -23,6 +25,8 @@
     --warn-bg:#F6ECD9;
     --danger:#A32D2D;
     --danger-bg:#F5E4E2;
+    --agencia:#6B4E8E;
+    --agencia-bg:#EFE7F3;
     --text:#202845;
     --muted:#75746D;
     --font-display:'Poppins',sans-serif;
@@ -64,6 +68,8 @@
   .chip.on-recorrido::before{background:var(--warn);}
   .chip.on-falta{border-color:var(--danger);background:var(--danger-bg);color:var(--danger);font-weight:500;}
   .chip.on-falta::before{background:var(--danger);}
+  .chip.on-agencia{border-color:var(--agencia);background:var(--agencia-bg);color:var(--agencia);font-weight:500;}
+  .chip.on-agencia::before{background:var(--agencia);}
   .spacer{flex:1;}
   button.refresh{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:12px;font-family:var(--font-body);cursor:pointer;color:var(--navy);}
   button.refresh:hover{background:var(--cream);}
@@ -81,6 +87,7 @@
   .live-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:10px 12px;box-shadow:0 1px 2px rgba(32,40,69,0.04);}
   .live-card.estado-oficina{border-left-color:var(--ok);}
   .live-card.estado-recorrido{border-left-color:var(--warn);}
+  .live-card.estado-agencia{border-left-color:var(--agencia);}
   .live-card.estado-falta{border-left-color:var(--danger);}
   .live-card.estado-justificada{border-left-color:#5C7AA8;}
   .live-card.estado-pendiente{border-left-color:var(--line);}
@@ -90,6 +97,7 @@
   .live-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--cream);color:var(--muted);white-space:nowrap;flex-shrink:0;}
   .estado-oficina .live-badge{background:var(--ok-bg);color:var(--ok);}
   .estado-recorrido .live-badge{background:var(--warn-bg);color:var(--warn);}
+  .estado-agencia .live-badge{background:var(--agencia-bg);color:var(--agencia);}
   .estado-falta .live-badge{background:var(--danger-bg);color:var(--danger);}
   .estado-justificada .live-badge{background:#E7ECF4;color:#5C7AA8;}
   .live-detail{font-size:11px;color:var(--muted);}
@@ -112,6 +120,15 @@
   .legend span{display:inline-flex;align-items:center;gap:6px;}
   .legend i.dotmark{width:11px;height:11px;border-radius:50%;display:inline-block;}
 
+  .report-panel{margin-bottom:22px;}
+  .report-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+  .field-inline{display:flex;flex-direction:column;gap:4px;}
+  .field-inline label{font-size:11px;color:var(--muted);font-weight:500;}
+  .field-inline input[type=date]{padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-family:var(--font-body);font-size:13px;color:var(--text);}
+  button.report-btn{display:inline-flex;align-items:center;gap:6px;background:var(--navy);border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-family:var(--font-body);font-weight:500;cursor:pointer;color:#fff;}
+  button.report-btn:hover{background:var(--navy-light);}
+  button.report-btn:disabled{opacity:0.6;cursor:default;}
+
   .grid-wrap{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto;margin-bottom:16px;max-height:70vh;box-shadow:0 1px 2px rgba(32,40,69,0.04);}
   table{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;}
   th, td{padding:6px 4px;text-align:center;font-size:11px;}
@@ -128,6 +145,7 @@
   .dot:hover{transform:scale(1.2);}
   .dot.oficina{background:var(--ok);}
   .dot.recorrido{background:var(--warn);}
+  .dot.agencia{background:var(--agencia);}
   .dot.falta{background:var(--danger-bg);border:1.5px solid var(--danger);}
   .dot.justificada{background:#E7ECF4;border:1.5px solid #5C7AA8;}
   .dot.pendiente{background:#fff;border:1.5px dashed var(--line);}
@@ -170,8 +188,10 @@
   <div class="filters">
     <div class="select-wrap"><i class="ti ti-user"></i><select id="filtroAsesor"><option value="">Todos los asesores</option></select></div>
     <div class="select-wrap"><i class="ti ti-map-pin"></i><select id="filtroDesarrollo"><option value="">Todos los desarrollos</option></select></div>
+    <div class="select-wrap"><i class="ti ti-briefcase"></i><select id="filtroAgencia"><option value="">Todas las agencias</option></select></div>
     <div class="chip on-oficina" id="chipOficina" onclick="toggleChip('oficina')">Oficina</div>
     <div class="chip on-recorrido" id="chipRecorrido" onclick="toggleChip('recorrido')">Recorrido</div>
+    <div class="chip on-agencia" id="chipAgencia" onclick="toggleChip('agencia')">Agencia</div>
     <div class="chip on-falta" id="chipFalta" onclick="toggleChip('falta')">Falta</div>
     <div class="spacer"></div>
     <button class="refresh" onclick="cargarDatos()"><i class="ti ti-refresh"></i> Actualizar</button>
@@ -195,9 +215,21 @@
     </div>
   </div>
 
+  <div class="panel report-panel">
+    <p class="section-title"><i class="ti ti-file-type-pdf"></i> Generar reporte</p>
+    <div class="report-form">
+      <div class="field-inline"><label for="repDesde">Desde</label><input type="date" id="repDesde" /></div>
+      <div class="field-inline"><label for="repHasta">Hasta</label><input type="date" id="repHasta" /></div>
+      <div class="select-wrap"><i class="ti ti-user"></i><select id="repAsesor"><option value="">Todos los asesores</option></select></div>
+      <button class="report-btn" id="repBtn" onclick="generarReportePDF()"><i class="ti ti-download"></i> Descargar PDF</button>
+    </div>
+    <p class="empty-note" id="repMsg"></p>
+  </div>
+
   <div class="legend">
     <span><i class="dotmark" style="background:var(--ok)"></i> Oficina</span>
     <span><i class="dotmark" style="background:var(--warn)"></i> Recorrido</span>
+    <span><i class="dotmark" style="background:var(--agencia)"></i> Visita a agencia</span>
     <span><i class="dotmark" style="background:var(--danger-bg);border:1.5px solid var(--danger)"></i> Falta (sin registro)</span>
     <span><i class="dotmark" style="background:#E7ECF4;border:1.5px solid #5C7AA8"></i> Falta justificada</span>
     <span><i class="dotmark" style="background:#fff;border:1.5px dashed var(--line)"></i> Pendiente (hoy, aún no vence)</span>
@@ -217,7 +249,7 @@ const DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbzlPAga-rYNqpkEiZcRZ
 let ASESORES = [];
 let DESARROLLOS = [];
 let allRecords = [];
-let activeFilters = { oficina: true, recorrido: true, falta: true };
+let activeFilters = { oficina: true, recorrido: true, agencia: true, falta: true };
 // La llave NUNCA vive escrita en este archivo. Se pide al abrir el dashboard
 // y el servidor (Code.gs, vía Propiedades de script) es quien decide si es
 // correcta — si alguien ve el código fuente no encuentra ninguna contraseña.
@@ -228,6 +260,12 @@ const CUTOFF_HOUR = 10; // hora límite (24h) para considerar falta el día de h
 // "asesor|fecha" de cada falta que la administradora ya marcó como justificada.
 let justificaciones = new Set();
 function esJustificada(asesor, fecha){ return justificaciones.has(asesor + '|' + fecha); }
+// Fecha de hoy en formato yyyy-MM-dd — un solo lugar para calcularla, en vez
+// de repetirla suelta en cada función.
+function hoyISO(){
+  const h = new Date();
+  return h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0');
+}
 // ──────────────────────────────────────────────────────────────────────
 
 const mesInput = document.getElementById('mesInput');
@@ -241,7 +279,10 @@ filtroAsesor.addEventListener('change', render);
 const filtroDesarrollo = document.getElementById('filtroDesarrollo');
 filtroDesarrollo.addEventListener('change', render);
 
-const CHIP_IDS = { oficina: 'chipOficina', recorrido: 'chipRecorrido', falta: 'chipFalta' };
+const filtroAgencia = document.getElementById('filtroAgencia');
+filtroAgencia.addEventListener('change', render);
+
+const CHIP_IDS = { oficina: 'chipOficina', recorrido: 'chipRecorrido', agencia: 'chipAgencia', falta: 'chipFalta' };
 function toggleChip(key){
   activeFilters[key] = !activeFilters[key];
   document.getElementById(CHIP_IDS[key]).style.opacity = activeFilters[key] ? '1' : '0.4';
@@ -262,6 +303,7 @@ function cargarDatos(){
       if(res.ok){
         allRecords = res.records;
         justificaciones = new Set((res.justificaciones || []).map(j => j.asesor + '|' + j.fecha));
+        poblarFiltroAgencia();
         render();
         renderHoy();
       }
@@ -285,6 +327,7 @@ function checkGate(){
         sessionStorage.setItem('imexico_key', val);
         allRecords = res.records;
         justificaciones = new Set((res.justificaciones || []).map(j => j.asesor + '|' + j.fecha));
+        poblarFiltroAgencia();
         document.getElementById('gate').style.display = 'none';
         render();
         renderHoy();
@@ -305,6 +348,7 @@ function intentarSesion(){
     if(res.ok){
       allRecords = res.records;
       justificaciones = new Set((res.justificaciones || []).map(j => j.asesor + '|' + j.fecha));
+      poblarFiltroAgencia();
       document.getElementById('gate').style.display = 'none';
       render();
       renderHoy();
@@ -324,6 +368,11 @@ function cargarConfig(){
         DESARROLLOS = res.desarrollos;
         ASESORES.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; filtroAsesor.appendChild(o); });
         DESARROLLOS.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; filtroDesarrollo.appendChild(o); });
+        const repAsesorSel = document.getElementById('repAsesor');
+        ASESORES.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; repAsesorSel.appendChild(o); });
+        const hoy = hoyISO();
+        document.getElementById('repDesde').value = hoy.slice(0, 8) + '01'; // primer día del mes actual
+        document.getElementById('repHasta').value = hoy;
         intentarSesion();
       } else {
         document.getElementById('gridWrap').innerHTML = '<div class="loading">No se pudo cargar la configuración (asesores/desarrollos).</div>';
@@ -332,19 +381,33 @@ function cargarConfig(){
     .catch(() => { document.getElementById('gridWrap').innerHTML = '<div class="loading">Sin conexión con el backend.</div>'; });
 }
 
+// Junta los nombres de agencia únicos que ya aparecen en los registros, para
+// que el filtro sea un select en vez de tener que escribir el nombre exacto.
+function poblarFiltroAgencia(){
+  const agencias = Array.from(new Set(allRecords.filter(r => r.estatus === 'AGENCIA' && r.agencia).map(r => r.agencia))).sort((a,b) => a.localeCompare(b));
+  const valorActual = filtroAgencia.value;
+  filtroAgencia.innerHTML = '<option value="">Todas las agencias</option>';
+  agencias.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; filtroAgencia.appendChild(o); });
+  if(agencias.includes(valorActual)) filtroAgencia.value = valorActual;
+}
+
 function render(){
   const [year, month] = mesInput.value.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
   const asesorFiltro = filtroAsesor.value;
   const desarrolloFiltro = filtroDesarrollo.value;
+  const agenciaFiltro = filtroAgencia.value;
   const asesoresAMostrar = asesorFiltro ? [asesorFiltro] : ASESORES;
 
   const hoy = new Date();
-  const hoyStr = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(hoy.getDate()).padStart(2,'0');
+  const hoyStr = hoyISO();
 
   const map = {};
   allRecords.forEach(r => {
-    if(desarrolloFiltro && r.desarrollo !== desarrolloFiltro) return;
+    // Solo excluye el recorrido/agencia que NO coincide con el filtro — nunca
+    // un día de Oficina, aunque el filtro de desarrollo/agencia esté activo.
+    if(desarrolloFiltro && r.estatus === 'RECORRIDO' && r.desarrollo !== desarrolloFiltro) return;
+    if(agenciaFiltro && r.estatus === 'AGENCIA' && r.agencia !== agenciaFiltro) return;
     const key = r.asesor + '|' + r.fecha;
     if(!map[key]) map[key] = [];
     map[key].push(r);
@@ -365,7 +428,7 @@ function render(){
   table.appendChild(thead);
 
   const tbody = document.createElement('tbody');
-  let diasHabilesPasados = 0, diasConRegistro = 0, totalRecorridos = 0, totalFaltas = 0;
+  let diasHabilesPasados = 0, diasConRegistro = 0, totalRecorridos = 0, totalAgencia = 0, totalFaltas = 0;
   const faltasPorAsesor = {};
   asesoresAMostrar.forEach(a => { faltasPorAsesor[a] = 0; });
 
@@ -392,6 +455,8 @@ function render(){
       let estado;
       if(recs.some(r => r.estatus === 'RECORRIDO')){
         estado = 'recorrido';
+      } else if(recs.some(r => r.estatus === 'AGENCIA')){
+        estado = 'agencia';
       } else if(recs.some(r => r.estatus === 'OFICINA')){
         estado = 'oficina';
       } else if(esFinde){
@@ -408,7 +473,7 @@ function render(){
 
       dot.classList.add(estado);
       if(recs.length > 1) dot.classList.add('multi');
-      if((estado === 'oficina' || estado === 'recorrido' || estado === 'falta') && !activeFilters[estado]) dot.classList.add('hidden');
+      if((estado === 'oficina' || estado === 'recorrido' || estado === 'agencia' || estado === 'falta') && !activeFilters[estado]) dot.classList.add('hidden');
 
       if(!esFinde && !esFuturo && estado !== 'justificada'){
         diasHabilesPasados++;
@@ -416,8 +481,11 @@ function render(){
         if(estado === 'falta'){ totalFaltas++; faltasPorAsesor[asesor]++; }
       }
       totalRecorridos += recs.filter(r => r.estatus === 'RECORRIDO').length;
+      totalAgencia += recs.filter(r => r.estatus === 'AGENCIA').length;
 
-      const resumen = recs.length ? recs.map(r => r.estatus === 'RECORRIDO' ? 'Recorrido: ' + r.desarrollo : 'Oficina').join(' / ') : (estado === 'falta' ? 'Falta' : estado === 'justificada' ? 'Falta justificada' : estado === 'pendiente' ? 'Pendiente' : '');
+      const resumen = recs.length
+        ? recs.map(r => r.estatus === 'RECORRIDO' ? 'Recorrido: ' + r.desarrollo : r.estatus === 'AGENCIA' ? 'Agencia: ' + r.agencia : 'Oficina').join(' / ')
+        : (estado === 'falta' ? 'Falta' : estado === 'justificada' ? 'Falta justificada' : estado === 'pendiente' ? 'Pendiente' : '');
       dot.title = asesor + ' — ' + fecha + (resumen ? ' — ' + resumen : '');
       dot.onclick = () => mostrarDetalle(asesor, fecha, recs, estado);
       td.appendChild(dot);
@@ -436,6 +504,7 @@ function render(){
   document.getElementById('stats').innerHTML =
     stat('Asistencia del mes', pctAsistencia + '%', 'ti-chart-donut', 'var(--ok)', 'var(--ok-bg)') +
     stat('Recorridos registrados', totalRecorridos, 'ti-route', 'var(--warn)', 'var(--warn-bg)') +
+    stat('Visitas a agencia', totalAgencia, 'ti-briefcase', 'var(--agencia)', 'var(--agencia-bg)') +
     stat('Faltas automáticas', totalFaltas, 'ti-user-x', 'var(--danger)', 'var(--danger-bg)');
 }
 
@@ -445,7 +514,7 @@ function stat(label, value, icon, color, bg){
 
 function mostrarDetalle(asesor, fecha, recs, estado){
   const el = document.getElementById('detail');
-  const iconos = { finde: 'ti-calendar-off', futuro: 'ti-calendar', falta: 'ti-alert-circle', justificada: 'ti-shield-check', pendiente: 'ti-clock', oficina: 'ti-building', recorrido: 'ti-route' };
+  const iconos = { finde: 'ti-calendar-off', futuro: 'ti-calendar', falta: 'ti-alert-circle', justificada: 'ti-shield-check', pendiente: 'ti-clock', oficina: 'ti-building', recorrido: 'ti-route', agencia: 'ti-briefcase' };
   const icon = iconos[estado] || 'ti-hand-click';
 
   if(estado === 'finde'){ el.innerHTML = '<i class="ti ' + icon + '"></i><span><b>' + asesor + '</b> — ' + fecha + ': fin de semana.</span>'; return; }
@@ -467,7 +536,7 @@ cargarConfig();
 // esté viendo el filtro del calendario — esto siempre es sobre hoy. ──────
 function renderHoy(){
   const hoy = new Date();
-  const fechaHoy = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(hoy.getDate()).padStart(2,'0');
+  const fechaHoy = hoyISO();
   document.getElementById('hoyLegible').textContent = hoy.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
   const esFinde = hoy.getDay() === 0 || hoy.getDay() === 6;
 
@@ -478,11 +547,15 @@ function renderHoy(){
   ASESORES.forEach(asesor => {
     const recs = allRecords.filter(r => r.asesor === asesor && r.fecha === fechaHoy);
     const recorridos = recs.filter(r => r.estatus === 'RECORRIDO').sort((a,b) => a.horaSalida.localeCompare(b.horaSalida));
+    const agenciaVisitas = recs.filter(r => r.estatus === 'AGENCIA').sort((a,b) => a.horaSalida.localeCompare(b.horaSalida));
     let estado, badge, detalle;
 
     if(recorridos.length){
       estado = 'recorrido'; badge = 'Recorrido';
       detalle = recorridos.map(r => r.desarrollo + ' · ' + r.horaSalida + ' a ' + r.horaRegreso).join(' · ');
+    } else if(agenciaVisitas.length){
+      estado = 'agencia'; badge = 'Agencia';
+      detalle = agenciaVisitas.map(r => r.agencia + ' · ' + r.horaSalida + ' a ' + r.horaRegreso).join(' · ');
     } else if(recs.some(r => r.estatus === 'OFICINA')){
       estado = 'oficina'; badge = 'Oficina'; detalle = 'En oficina hoy.';
     } else if(esFinde){
@@ -583,6 +656,203 @@ function justificar(asesor, fecha, btnEl){
     btnEl.disabled = false;
     btnEl.textContent = 'Reintentar';
   });
+}
+
+// ── Reporte en PDF ───────────────────────────────────────────────────────
+function fechaLegibleCorta(f){
+  const [y,m,d] = f.split('-').map(Number);
+  return new Date(y, m-1, d).toLocaleDateString('es-MX', { day:'numeric', month:'short', year:'numeric' });
+}
+
+// Recorre día por día el rango [desde,hasta] para cada asesor y arma su
+// resumen — misma lógica de estados que el calendario mensual (render()),
+// pero generalizada a un rango de fechas cualquiera en vez de un solo mes.
+function calcularResumenPeriodo(asesores, desde, hasta){
+  const map = {};
+  allRecords.forEach(r => {
+    const key = r.asesor + '|' + r.fecha;
+    if(!map[key]) map[key] = [];
+    map[key].push(r);
+  });
+
+  const hoy = hoyISO();
+  const ahora = new Date();
+  const resumen = {};
+  asesores.forEach(a => { resumen[a] = { oficina: 0, recorrido: 0, agencia: 0, falta: 0, justificada: 0, diasHabiles: 0, diasConRegistro: 0 }; });
+
+  const dIni = new Date(desde + 'T00:00:00');
+  const dFin = new Date(hasta + 'T00:00:00');
+
+  for(let d = new Date(dIni); d <= dFin; d.setDate(d.getDate() + 1)){
+    const fecha = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    const dow = d.getDay();
+    const esFinde = dow === 0 || dow === 6;
+    const esFuturo = fecha > hoy;
+    const esHoy = fecha === hoy;
+
+    asesores.forEach(asesor => {
+      const recs = map[asesor + '|' + fecha] || [];
+      const r = resumen[asesor];
+      r.oficina += recs.filter(x => x.estatus === 'OFICINA').length;
+      r.recorrido += recs.filter(x => x.estatus === 'RECORRIDO').length;
+      r.agencia += recs.filter(x => x.estatus === 'AGENCIA').length;
+
+      if(esFinde || esFuturo) return;
+
+      if(esJustificada(asesor, fecha)){ r.justificada++; return; }
+
+      r.diasHabiles++;
+      if(recs.length > 0){
+        r.diasConRegistro++;
+      } else if(esHoy){
+        if(ahora.getHours() >= CUTOFF_HOUR) r.falta++;
+      } else {
+        r.falta++;
+      }
+    });
+  }
+
+  return resumen;
+}
+
+function generarReportePDF(){
+  const repMsg = document.getElementById('repMsg');
+  const desde = document.getElementById('repDesde').value;
+  const hasta = document.getElementById('repHasta').value;
+  const asesorRep = document.getElementById('repAsesor').value;
+
+  if(!desde || !hasta){ repMsg.textContent = 'Selecciona el rango de fechas.'; return; }
+  if(desde > hasta){ repMsg.textContent = 'La fecha "Desde" no puede ser después de "Hasta".'; return; }
+  if(!window.jspdf){ repMsg.textContent = 'No se pudo cargar el generador de PDF. Revisa tu conexión y recarga la página.'; return; }
+  if(!ASESORES.length){ repMsg.textContent = 'Espera a que carguen los asesores e intenta de nuevo.'; return; }
+
+  repMsg.textContent = '';
+  const btn = document.getElementById('repBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Generando…';
+
+  try{
+    const listaAsesores = asesorRep ? [asesorRep] : ASESORES;
+
+    const registrosFiltrados = allRecords
+      .filter(r => r.fecha >= desde && r.fecha <= hasta)
+      .filter(r => !asesorRep || r.asesor === asesorRep)
+      .sort((a,b) => a.fecha === b.fecha ? a.asesor.localeCompare(b.asesor) : a.fecha.localeCompare(b.fecha));
+
+    const resumen = calcularResumenPeriodo(listaAsesores, desde, hasta);
+
+    let totOficina = 0, totRecorrido = 0, totAgencia = 0, totFalta = 0, totJust = 0, totDiasHab = 0, totDiasCon = 0;
+    listaAsesores.forEach(a => {
+      const r = resumen[a];
+      totOficina += r.oficina; totRecorrido += r.recorrido; totAgencia += r.agencia;
+      totFalta += r.falta; totJust += r.justificada;
+      totDiasHab += r.diasHabiles; totDiasCon += r.diasConRegistro;
+    });
+    const pctGeneral = totDiasHab > 0 ? Math.round((totDiasCon / totDiasHab) * 100) : 0;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Encabezado con marca
+    doc.setFillColor(32, 40, 69);
+    doc.rect(0, 0, pageWidth, 26, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text('iMexico Real Estate', 14, 12);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Reporte de asistencia — asesores', 14, 19);
+
+    doc.setTextColor(32, 40, 69);
+    doc.setFontSize(9);
+    let y = 34;
+    doc.text('Periodo: ' + fechaLegibleCorta(desde) + ' a ' + fechaLegibleCorta(hasta), 14, y);
+    y += 5;
+    if(asesorRep){ doc.text('Asesor: ' + asesorRep, 14, y); y += 5; }
+    doc.setTextColor(120, 120, 120);
+    doc.text('Generado: ' + new Date().toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }), 14, y);
+    y += 8;
+
+    doc.setTextColor(32, 40, 69);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('Resumen del periodo', 14, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(
+      'Asistencia: ' + pctGeneral + '%   ·   Oficina: ' + totOficina + '   ·   Recorridos: ' + totRecorrido +
+      '   ·   Visitas a agencia: ' + totAgencia + '   ·   Faltas: ' + totFalta + '   ·   Justificadas: ' + totJust,
+      14, y
+    );
+    y += 6;
+
+    doc.autoTable({
+      startY: y,
+      head: [['Asesor', 'Días hábiles', 'Con registro', '% Asist.', 'Oficina', 'Recorridos', 'Agencia', 'Faltas', 'Justif.']],
+      body: listaAsesores.map(a => {
+        const r = resumen[a];
+        const pct = r.diasHabiles > 0 ? Math.round((r.diasConRegistro / r.diasHabiles) * 100) : 0;
+        return [a, r.diasHabiles, r.diasConRegistro, pct + '%', r.oficina, r.recorrido, r.agencia, r.falta, r.justificada];
+      }),
+      theme: 'grid',
+      headStyles: { fillColor: [32, 40, 69], fontSize: 8 },
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      margin: { left: 14, right: 14 }
+    });
+
+    let y2 = doc.lastAutoTable.finalY + 10;
+    if(y2 > 250){ doc.addPage(); y2 = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(32, 40, 69);
+    doc.text('Detalle de registros', 14, y2);
+
+    doc.autoTable({
+      startY: y2 + 4,
+      head: [['Fecha', 'Asesor', 'Estatus', 'Desarrollo / Agencia', 'Horario']],
+      body: registrosFiltrados.map(r => [
+        r.fecha,
+        r.asesor,
+        r.estatus === 'RECORRIDO' ? 'Recorrido' : r.estatus === 'AGENCIA' ? 'Agencia' : 'Oficina',
+        r.estatus === 'RECORRIDO' ? r.desarrollo : r.estatus === 'AGENCIA' ? r.agencia : '—',
+        r.horaSalida ? (r.horaSalida + ' a ' + r.horaRegreso) : '—'
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [32, 40, 69], fontSize: 8 },
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      margin: { left: 14, right: 14 },
+      didDrawPage: function(){
+        // vuelve a poner el encabezado navy en cada página nueva que abra la tabla
+        if(doc.internal.getCurrentPageInfo().pageNumber > 1){
+          doc.setFillColor(32, 40, 69);
+          doc.rect(0, 0, pageWidth, 16, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(11);
+          doc.text('iMexico Real Estate — Reporte de asistencia', 14, 10);
+        }
+      }
+    });
+
+    const totalPaginas = doc.internal.getNumberOfPages();
+    for(let i = 1; i <= totalPaginas; i++){
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Página ' + i + ' de ' + totalPaginas, pageWidth - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+    }
+
+    doc.save('reporte-asistencia_' + desde + '_a_' + hasta + '.pdf');
+  } catch(err){
+    console.error('Error generando el PDF:', err);
+    repMsg.textContent = 'Ocurrió un error generando el PDF. Intenta de nuevo.';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-download"></i> Descargar PDF';
+  }
 }
 </script>
 </body>
