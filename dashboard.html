@@ -154,7 +154,9 @@
   .dot.futuro{background:transparent;border-color:transparent;cursor:default;}
   .dot.futuro:hover{transform:none;}
   .dot.multi::after{content:'';position:absolute;top:-2px;right:-2px;width:6px;height:6px;border-radius:50%;background:var(--navy);border:1px solid #fff;}
-  .dot.hidden{opacity:0.15;}
+  .dot.hidden{opacity:0;pointer-events:none;}
+  .panel-hidden{opacity:0.35;filter:grayscale(60%);pointer-events:none;position:relative;}
+  .panel-hidden::after{content:'Filtro de faltas desactivado';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);background:rgba(255,255,255,0.6);}
 
   .detail{display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--muted);min-height:20px;box-shadow:0 1px 2px rgba(32,40,69,0.04);}
   .detail i{font-size:16px;color:var(--gold-dark);margin-top:1px;}
@@ -205,11 +207,11 @@
   </div>
 
   <div class="two-col">
-    <div class="panel">
+    <div class="panel" id="panelFaltasHoy">
       <p class="section-title"><i class="ti ti-user-exclamation"></i> Faltas de hoy</p>
       <div id="faltasHoyList"><div class="empty-note">Cargando…</div></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="panelRankingFaltas">
       <p class="section-title"><i class="ti ti-trending-down"></i> Más faltas este mes</p>
       <div id="rankingFaltas"><div class="empty-note">Cargando…</div></div>
     </div>
@@ -286,7 +288,16 @@ const CHIP_IDS = { oficina: 'chipOficina', recorrido: 'chipRecorrido', agencia: 
 function toggleChip(key){
   activeFilters[key] = !activeFilters[key];
   document.getElementById(CHIP_IDS[key]).style.opacity = activeFilters[key] ? '1' : '0.4';
+  if(key === 'falta') aplicarFiltroFaltaPaneles_();
   render();
+}
+// El chip "Falta" también apaga los dos paneles dedicados a faltas (de hoy y
+// ranking del mes) — antes solo desvanecía un poco los puntos del calendario,
+// lo que hacía parecer que el filtro "no hacía nada".
+function aplicarFiltroFaltaPaneles_(){
+  const on = activeFilters.falta;
+  document.getElementById('panelFaltasHoy').classList.toggle('panel-hidden', !on);
+  document.getElementById('panelRankingFaltas').classList.toggle('panel-hidden', !on);
 }
 
 // Única función que habla con el endpoint protegido — el servidor es quien
@@ -442,7 +453,7 @@ function render(){
     for(let d = 1; d <= daysInMonth; d++){
       const fecha = year + '-' + String(month).padStart(2,'0') + '-' + String(d).padStart(2,'0');
       const dow = new Date(year, month - 1, d).getDay();
-      const esFinde = dow === 0 || dow === 6;
+      const esFinde = dow === 0; // sábado es día hábil (sí hay oficina); solo domingo es fin de semana
       const esFuturo = fecha > hoyStr;
       const esHoy = fecha === hoyStr;
       const recs = map[asesor + '|' + fecha] || [];
@@ -538,7 +549,7 @@ function renderHoy(){
   const hoy = new Date();
   const fechaHoy = hoyISO();
   document.getElementById('hoyLegible').textContent = hoy.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
-  const esFinde = hoy.getDay() === 0 || hoy.getDay() === 6;
+  const esFinde = hoy.getDay() === 0; // sábado es día hábil
 
   const cardsEl = document.getElementById('liveCards');
   cardsEl.innerHTML = '';
@@ -686,7 +697,7 @@ function calcularResumenPeriodo(asesores, desde, hasta){
   for(let d = new Date(dIni); d <= dFin; d.setDate(d.getDate() + 1)){
     const fecha = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     const dow = d.getDay();
-    const esFinde = dow === 0 || dow === 6;
+    const esFinde = dow === 0; // sábado es día hábil
     const esFuturo = fecha > hoy;
     const esHoy = fecha === hoy;
 
@@ -713,6 +724,103 @@ function calcularResumenPeriodo(asesores, desde, hasta){
   }
 
   return resumen;
+}
+
+// ── Helpers de dibujo para el PDF — gráficas reales con primitivas de jsPDF,
+// no solo tablas. Un solo color por gráfica (la magnitud es el dato, no la
+// identidad), remates redondeados, track tenue, etiqueta directa del valor
+// en vez de ejes/grid — mismo criterio que el resto del dashboard. ────────
+const PDF_NAVY = [32, 40, 69];
+const PDF_GOLD = [176, 121, 31];   // mismo tono que --warn (recorridos)
+const PDF_DANGER = [163, 45, 45];  // mismo tono que --danger (faltas)
+const PDF_AGENCIA = [107, 78, 142];
+const PDF_TRACK = [236, 232, 223];
+const PDF_MUTED = [120, 124, 138];
+const PDF_CREAM = [247, 245, 241];
+
+function pdfColor_(doc, c){ return c; }
+
+// Título de sección con barrita de acento a la izquierda — look consistente
+// en todo el reporte para separar bloques sin necesitar líneas/recuadros.
+function dibujarTituloSeccion_(doc, x, y, texto, color){
+  doc.setFillColor(color[0], color[1], color[2]);
+  doc.roundedRect(x, y - 3.2, 1.6, 4.6, 0.8, 0.8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(PDF_NAVY[0], PDF_NAVY[1], PDF_NAVY[2]);
+  doc.text(texto, x + 4, y);
+}
+
+// Fila de tarjetas KPI (número grande + etiqueta), como el encabezado del
+// reporte de ejemplo: lo primero que se lee, antes de cualquier tabla.
+function dibujarKPIs_(doc, x, y, width, kpis){
+  const gap = 4;
+  const cardW = (width - gap * (kpis.length - 1)) / kpis.length;
+  const cardH = 23;
+  kpis.forEach((k, i) => {
+    const cx = x + i * (cardW + gap);
+    doc.setFillColor(PDF_CREAM[0], PDF_CREAM[1], PDF_CREAM[2]);
+    doc.roundedRect(cx, y, cardW, cardH, 2.2, 2.2, 'F');
+    doc.setFillColor(k.color[0], k.color[1], k.color[2]);
+    doc.roundedRect(cx, y, 1.6, cardH, 0.8, 0.8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(PDF_NAVY[0], PDF_NAVY[1], PDF_NAVY[2]);
+    doc.text(String(k.value), cx + 5, y + 11.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.2);
+    doc.setTextColor(PDF_MUTED[0], PDF_MUTED[1], PDF_MUTED[2]);
+    const lines = doc.splitTextToSize(k.label, cardW - 8);
+    doc.text(lines, cx + 5, y + 16.8);
+  });
+  return y + cardH;
+}
+
+// Barras horizontales: track gris claro + barra en un solo color, remates
+// redondeados, etiqueta a la izquierda y valor pegado al final de la barra.
+// Devuelve el Y donde termina, para encadenar el siguiente bloque.
+function dibujarBarrasHorizontales_(doc, x, y, width, items, color){
+  const barH = 5;
+  const gap = 3;
+  const labelW = 40;
+  const valueW = 10;
+  const barAreaW = width - labelW - valueW;
+  const max = Math.max.apply(null, items.map(it => it.value).concat([1]));
+
+  items.forEach((item, i) => {
+    const by = y + i * (barH + gap);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.8);
+    doc.setTextColor(60, 66, 90);
+    const label = doc.splitTextToSize(item.label, labelW - 2)[0];
+    doc.text(label, x, by + barH - 1.2);
+
+    doc.setFillColor(PDF_TRACK[0], PDF_TRACK[1], PDF_TRACK[2]);
+    doc.roundedRect(x + labelW, by, barAreaW, barH, barH / 2, barH / 2, 'F');
+
+    const w = Math.max((item.value / max) * barAreaW, barH);
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.roundedRect(x + labelW, by, w, barH, barH / 2, barH / 2, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.8);
+    doc.setTextColor(PDF_NAVY[0], PDF_NAVY[1], PDF_NAVY[2]);
+    doc.text(String(item.value), x + labelW + barAreaW + 2, by + barH - 1.2);
+  });
+
+  return y + items.length * (barH + gap);
+}
+
+// Agrupa y cuenta registros de un estatus por un campo (desarrollo, agencia,
+// hora de salida redondeada a la hora) — lo que alimenta cada gráfica.
+function agruparConteo_(registros, campoFn){
+  const m = {};
+  registros.forEach(r => {
+    const k = campoFn(r);
+    if(k === null || k === undefined || k === '') return;
+    m[k] = (m[k] || 0) + 1;
+  });
+  return Object.entries(m).sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value }));
 }
 
 function generarReportePDF(){
@@ -750,45 +858,135 @@ function generarReportePDF(){
     });
     const pctGeneral = totDiasHab > 0 ? Math.round((totDiasCon / totDiasHab) * 100) : 0;
 
+    // Datos agregados para las gráficas — todo sale de registrosFiltrados,
+    // sin pedir nada nuevo al servidor.
+    const porDesarrollo = agruparConteo_(registrosFiltrados.filter(r => r.estatus === 'RECORRIDO'), r => r.desarrollo).slice(0, 8);
+    const porHorario = (() => {
+      const buckets = {};
+      registrosFiltrados.filter(r => (r.estatus === 'RECORRIDO' || r.estatus === 'AGENCIA') && r.horaSalida).forEach(r => {
+        const h = parseInt(r.horaSalida.split(':')[0], 10);
+        if(isNaN(h)) return;
+        const label = String(h).padStart(2, '0') + ':00–' + String(h + 1).padStart(2, '0') + ':00';
+        buckets[label] = (buckets[label] || 0) + 1;
+      });
+      return Object.entries(buckets).sort((a, b) => a[0].localeCompare(b[0])).map(([label, value]) => ({ label, value }));
+    })();
+    const porAsesorFaltas = listaAsesores
+      .map(a => ({ label: a, value: resumen[a].falta }))
+      .filter(it => it.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+
+    const resumenEjecutivo = (() => {
+      const partes = [];
+      if(porDesarrollo.length){
+        const top = porDesarrollo[0];
+        const pctTop = totRecorrido > 0 ? Math.round((top.value / totRecorrido) * 100) : 0;
+        let txt = top.label + ' concentra ' + top.value + ' recorrido' + (top.value === 1 ? '' : 's') + ' (' + pctTop + '%)';
+        if(porDesarrollo[1]){
+          const seg = porDesarrollo[1];
+          const pctSeg = totRecorrido > 0 ? Math.round((seg.value / totRecorrido) * 100) : 0;
+          txt += ', seguido de ' + seg.label + ' con ' + seg.value + ' (' + pctSeg + '%)';
+        }
+        partes.push(txt + '.');
+      }
+      if(porHorario.length){
+        const topHora = porHorario.slice().sort((a, b) => b.value - a.value)[0];
+        partes.push('La salida más frecuente es ' + topHora.label.split('–')[0] + ', con ' + topHora.value + ' registro' + (topHora.value === 1 ? '' : 's') + '.');
+      }
+      partes.push(
+        'La asistencia general del periodo es ' + pctGeneral + '%' +
+        (totFalta > 0 ? ', con ' + totFalta + ' falta' + (totFalta === 1 ? '' : 's') + ' automática' + (totFalta === 1 ? '' : 's') + ' detectada' + (totFalta === 1 ? '' : 's') + '.' : ', sin faltas automáticas en el periodo.')
+      );
+      return partes.join(' ');
+    })();
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 14;
+    const contentW = pageWidth - marginX * 2;
 
-    // Encabezado con marca
-    doc.setFillColor(32, 40, 69);
-    doc.rect(0, 0, pageWidth, 26, 'F');
+    // Asegura que quede espacio antes de seguir dibujando a mano; si no,
+    // abre página nueva y deja margen para el encabezado delgado que se
+    // repinta al final sobre todas las páginas.
+    function asegurarEspacio_(necesario){
+      if(y + necesario > pageHeight - 18){
+        doc.addPage();
+        y = 24;
+      }
+    }
+
+    // Encabezado con marca (portada)
+    doc.setFillColor(PDF_NAVY[0], PDF_NAVY[1], PDF_NAVY[2]);
+    doc.rect(0, 0, pageWidth, 28, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.text('iMexico Real Estate', 14, 12);
+    doc.setFontSize(16);
+    doc.text('Reporte de asistencia', marginX, 13);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text('Reporte de asistencia — asesores', 14, 19);
+    doc.setFontSize(9.5);
+    doc.text('iMexico Real Estate · ' + fechaLegibleCorta(desde) + ' al ' + fechaLegibleCorta(hasta) + (asesorRep ? ' · ' + asesorRep : ''), marginX, 20.5);
 
-    doc.setTextColor(32, 40, 69);
-    doc.setFontSize(9);
-    let y = 34;
-    doc.text('Periodo: ' + fechaLegibleCorta(desde) + ' a ' + fechaLegibleCorta(hasta), 14, y);
-    y += 5;
-    if(asesorRep){ doc.text('Asesor: ' + asesorRep, 14, y); y += 5; }
-    doc.setTextColor(120, 120, 120);
-    doc.text('Generado: ' + new Date().toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }), 14, y);
+    let y = 40;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(PDF_MUTED[0], PDF_MUTED[1], PDF_MUTED[2]);
+    doc.text('Generado el ' + new Date().toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }), marginX, y);
     y += 8;
 
-    doc.setTextColor(32, 40, 69);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text('Resumen del periodo', 14, y);
+    // Tarjetas KPI — lo primero que se lee
+    y = dibujarKPIs_(doc, marginX, y, contentW, [
+      { value: pctGeneral + '%', label: 'Asistencia del periodo', color: [63, 125, 78] },
+      { value: totRecorrido, label: 'Recorridos registrados', color: PDF_GOLD },
+      { value: totAgencia, label: 'Visitas a agencia', color: PDF_AGENCIA },
+      { value: totFalta, label: 'Faltas automáticas', color: PDF_DANGER }
+    ]);
+    y += 10;
+
+    // Lectura ejecutiva
+    dibujarTituloSeccion_(doc, marginX, y, 'Lectura ejecutiva', PDF_NAVY);
     y += 5;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text(
-      'Asistencia: ' + pctGeneral + '%   ·   Oficina: ' + totOficina + '   ·   Recorridos: ' + totRecorrido +
-      '   ·   Visitas a agencia: ' + totAgencia + '   ·   Faltas: ' + totFalta + '   ·   Justificadas: ' + totJust,
-      14, y
-    );
-    y += 6;
+    doc.setFontSize(8.6);
+    doc.setTextColor(70, 75, 95);
+    const lineasResumen = doc.splitTextToSize(resumenEjecutivo, contentW);
+    doc.text(lineasResumen, marginX, y);
+    y += lineasResumen.length * 4.2 + 8;
 
+    // Gráfica: recorridos por desarrollo
+    if(porDesarrollo.length){
+      asegurarEspacio_(14 + porDesarrollo.length * 8);
+      dibujarTituloSeccion_(doc, marginX, y, 'Recorridos por desarrollo', PDF_GOLD);
+      y += 7;
+      y = dibujarBarrasHorizontales_(doc, marginX, y, contentW, porDesarrollo, PDF_GOLD);
+      y += 9;
+    }
+
+    // Gráfica: concentración por horario de salida
+    if(porHorario.length){
+      asegurarEspacio_(14 + porHorario.length * 8);
+      dibujarTituloSeccion_(doc, marginX, y, 'Concentración por horario de salida', PDF_NAVY);
+      y += 7;
+      y = dibujarBarrasHorizontales_(doc, marginX, y, contentW, porHorario, PDF_NAVY);
+      y += 9;
+    }
+
+    // Gráfica: faltas por asesor (solo si hay)
+    if(porAsesorFaltas.length){
+      asegurarEspacio_(14 + porAsesorFaltas.length * 8);
+      dibujarTituloSeccion_(doc, marginX, y, 'Faltas por asesor', PDF_DANGER);
+      y += 7;
+      y = dibujarBarrasHorizontales_(doc, marginX, y, contentW, porAsesorFaltas, PDF_DANGER);
+      y += 9;
+    }
+
+    // Tabla resumen por asesor
+    asegurarEspacio_(30);
+    dibujarTituloSeccion_(doc, marginX, y, 'Resumen por asesor', PDF_NAVY);
+    y += 4;
     doc.autoTable({
       startY: y,
       head: [['Asesor', 'Días hábiles', 'Con registro', '% Asist.', 'Oficina', 'Recorridos', 'Agencia', 'Faltas', 'Justif.']],
@@ -798,17 +996,15 @@ function generarReportePDF(){
         return [a, r.diasHabiles, r.diasConRegistro, pct + '%', r.oficina, r.recorrido, r.agencia, r.falta, r.justificada];
       }),
       theme: 'grid',
-      headStyles: { fillColor: [32, 40, 69], fontSize: 8 },
+      headStyles: { fillColor: PDF_NAVY, fontSize: 8 },
+      alternateRowStyles: { fillColor: [250, 249, 246] },
       styles: { fontSize: 8, cellPadding: 2.5 },
-      margin: { left: 14, right: 14 }
+      margin: { left: marginX, right: marginX, top: 18 }
     });
 
     let y2 = doc.lastAutoTable.finalY + 10;
-    if(y2 > 250){ doc.addPage(); y2 = 20; }
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(32, 40, 69);
-    doc.text('Detalle de registros', 14, y2);
+    if(y2 > pageHeight - 40){ doc.addPage(); y2 = 24; }
+    dibujarTituloSeccion_(doc, marginX, y2, 'Detalle de registros', PDF_NAVY);
 
     doc.autoTable({
       startY: y2 + 4,
@@ -821,28 +1017,29 @@ function generarReportePDF(){
         r.horaSalida ? (r.horaSalida + ' a ' + r.horaRegreso) : '—'
       ]),
       theme: 'striped',
-      headStyles: { fillColor: [32, 40, 69], fontSize: 8 },
+      headStyles: { fillColor: PDF_NAVY, fontSize: 8 },
       styles: { fontSize: 7.5, cellPadding: 2 },
-      margin: { left: 14, right: 14 },
-      didDrawPage: function(){
-        // vuelve a poner el encabezado navy en cada página nueva que abra la tabla
-        if(doc.internal.getCurrentPageInfo().pageNumber > 1){
-          doc.setFillColor(32, 40, 69);
-          doc.rect(0, 0, pageWidth, 16, 'F');
-          doc.setTextColor(255, 255, 255);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(11);
-          doc.text('iMexico Real Estate — Reporte de asistencia', 14, 10);
-        }
-      }
+      margin: { left: marginX, right: marginX, top: 18 }
     });
 
+    // Encabezado delgado + pie de página, repintado de forma uniforme sobre
+    // todas las páginas (incluida la portada, que ya trae el suyo propio).
     const totalPaginas = doc.internal.getNumberOfPages();
     for(let i = 1; i <= totalPaginas; i++){
       doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text('Página ' + i + ' de ' + totalPaginas, pageWidth - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+      if(i > 1){
+        doc.setFillColor(PDF_NAVY[0], PDF_NAVY[1], PDF_NAVY[2]);
+        doc.rect(0, 0, pageWidth, 14, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('iMexico Real Estate — Reporte de asistencia', marginX, 9);
+      }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(170, 170, 178);
+      doc.text('iMexico Real Estate · hecho a la medida del equipo', marginX, pageHeight - 8);
+      doc.text('Página ' + i + ' de ' + totalPaginas, pageWidth - marginX, pageHeight - 8, { align: 'right' });
     }
 
     doc.save('reporte-asistencia_' + desde + '_a_' + hasta + '.pdf');
